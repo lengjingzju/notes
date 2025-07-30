@@ -1,0 +1,29 @@
+[book]
+title = "学习笔记"
+description = "学习笔记"
+authors = ["冷静"]
+language = "zh-CN"
+
+[preprocessor.links]
+
+[preprocessor.katex]
+after = ["links"]
+
+[preprocessor.mermaid]
+
+[preprocessor.toc]
+marker = "[TOC]"
+max-level = 4
+
+[preprocessor.admonish]
+command = "mdbook-admonish"
+assets_version = "3.1.0"
+
+[output.html]
+mathjax-support = false
+additional-js = ["assets/fzf.umd.js", "assets/elasticlunr.js", "assets/mermaid.min.js", "assets/mermaid-init.js"]
+additional-css = ["assets/custom.css", "assets/mdbook-admonish.css"]
+
+[output.html.fold]
+enable = true
+level = 2

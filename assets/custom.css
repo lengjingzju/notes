@@ -1,0 +1,17 @@
+
+:root {
+    --sidebar-width: 300px;
+    --page-padding: 10px;
+    --content-max-width: 1200px;
+}
+
+.light {
+    --table-border-color: hsl(0, 0%, 90%);
+    --table-header-bg: hsl(0, 0%, 95%);
+    --table-alternate-bg: hsl(0, 0%, 99%);
+}
+
+table thead th {
+    border: 1px var(--table-border-color) solid;
+}
+
