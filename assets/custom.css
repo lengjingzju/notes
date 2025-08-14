@@ -1,9 +1,37 @@
+/* ========== 页面宽度优化 ==========*/
 
 :root {
     --sidebar-width: 300px;
     --page-padding: 10px;
     --content-max-width: 1200px;
 }
+
+
+/* ========== 链接图片优化 ========== */
+
+/* ========== 图片居中 ==========*/
+.content img {
+    display: block;
+    margin: 1.5rem auto;
+}
+
+/* ===== 圆角边框和交互效果 ===== */
+
+.content img {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.content img:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+
+/* ========== 普通表格优化 ========== */
+
+/* ===== 表格背景边框优化 ===== */
 
 .light {
     --table-border-color: hsl(0, 0%, 90%);
@@ -15,3 +43,168 @@ table thead th {
     border: 1px var(--table-border-color) solid;
 }
 
+/* ===== 表格宽度优化(容器与内容区域同宽) ===== */
+
+.table-wrapper {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+}
+
+table {
+    width: 100%;
+    min-width: 100%;
+}
+
+
+/* ========== Mermaid表格优化 ========== */
+
+/* ===== 容器 ===== */
+
+.mermaid-container {
+    position: relative;
+    margin: 2em 0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: var(--bg);
+    border: 1px solid var(--border);
+}
+
+html.dark .mermaid-container {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border-color: #444;
+}
+
+/* ===== 按钮组 ===== */
+
+.mermaid-button-group {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+}
+
+/* ===== 通用按钮样式 ===== */
+
+.mermaid-toggle,
+.mermaid-download,
+.mermaid-copy {
+    display: inline-flex;
+    align-items: center;
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.85em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mermaid-toggle:hover,
+.mermaid-download:hover,
+.mermaid-copy:hover {
+    background: var(--button-hover-bg);
+    transform: translateY(-1px);
+}
+
+/* ===== 图表显示区域 ===== */
+
+div.mermaid {
+    display: block;
+    padding: 45px 20px 25px;
+    text-align: center;
+    margin: 0 auto;
+    min-height: 150px;
+    /* display: flex; // 甘特图设flex时显示全部凑在了一起 */
+    align-items: center;
+    justify-content: center;
+}
+
+div.mermaid > svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ===== 代码显示区域 ===== */
+
+.mermaid-code {
+    display: none;
+    padding: 45px 20px 20px;
+    margin: 0;
+    overflow: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    line-height: 1.5;
+    background: var(--code-bg);
+    color: var(--code-text);
+    border-radius: 0 0 8px 8px;
+    white-space: pre-wrap;
+    max-height: 500px;
+}
+
+/* ===== 复制反馈文本 ===== */
+
+.copied-text {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.error-text {
+    color: var(--error-color);
+    font-weight: bold;
+}
+
+/* ===== 主题变量 ===== */
+
+html {
+    --button-bg: #e9ecef;
+    --button-text: #495057;
+    --button-hover-bg: #dee2e6;
+    --border: #dee2e6;
+    --code-bg: #f8f9fa;
+    --code-text: #343a40;
+    --bg: #fff;
+    --success-color: #28a745;
+    --error-color: #dc3545;
+}
+
+html.dark {
+    --button-bg: #495057;
+    --button-text: #e9ecef;
+    --button-hover-bg: #6c757d;
+    --border: #495057;
+    --code-bg: #212529;
+    --code-text: #e9ecef;
+    --bg: #343a40;
+    --success-color: #20c997;
+    --error-color: #ff6b6b;
+}
+
+/* ===== 响应式调整 ===== */
+
+@media (max-width: 768px) {
+    .mermaid-button-group {
+        top: 8px;
+        right: 8px;
+        gap: 6px;
+    }
+
+    .mermaid-toggle,
+    .mermaid-download,
+    .mermaid-copy {
+        padding: 5px 10px;
+        font-size: 0.8em;
+    }
+
+    div.mermaid {
+        padding: 35px 10px 15px;
+    }
+
+    .mermaid-code {
+        padding: 35px 10px 10px;
+    }
+}
