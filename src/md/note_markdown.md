@@ -468,7 +468,7 @@ int main (void)
 | --- | --- | --- |
 | aa | bb | cc |
 
-| 左对齐 | 右对齐 | 居中对齐<div style="width:100px;"> |
+| 左对齐 | 右对齐 | 居中对齐<div style="width:600px;"> |
 | :-- | --: | :-: |
 | aa | bb | cc |
 | aaaa | bbbb | cccc |
@@ -1891,7 +1891,7 @@ level = 2
 
 ### 覆盖默认设置
 
-用户可用自定义css覆盖默认自动生成的的css，例如下面的 `assets/custom.css` 覆盖了默认生成的 `book/css/variables.css` 和 `book/css/general.css` 中的同类的某些设置，改变了默认显示页宽和表格样式。
+用户可用自定义css覆盖默认自动生成的的css，例如下面的 `assets/custom.css` 覆盖了默认生成的 `book/css/variables.css` 和 `book/css/general.css` 中的同类的某些设置，改变了默认显示页宽和表格样式。
 
 ```
 :root {

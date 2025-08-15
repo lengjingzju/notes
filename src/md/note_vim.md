@@ -615,16 +615,17 @@ nmap <C-_>i :cs find i <C-R>=expand("<cfile>")<CR><CR> :copen<CR><CR>
 " 配置文件中，以单个双引号开头的文字为注释。
 " --环境设置--
 
-" 设置字体，ubuntumono为字体名，15为字号，注意\和空格
-set guifont=ubuntumono\ 15
+" 设置字体，ubuntumono为字体名，16为字号，注意\和空格
+" set guifont=ubuntumono\ 16
+set guifont=DejaVuSansMono\ 16
 " compatible 兼容模式就是让vim关闭所有扩展的功能, nocompatible 相反
 set nocompatible
 " 语法高亮
 if has("syntax")
 syntax on
 endif
-" 设置配色方案，vim自带的配色方案保存在/usr/share/vim/vim72/colors目录下
-colorscheme ron
+" 设置配色方案，vim自带的配色方案保存在/usr/share/vim/vim*/colors目录下
+colorscheme evening " evening elflord industry koehler pablo ron ...
 " 打开文件类型检测功能，执行的是$vimRUNTIME/filetype.vim脚本
 filetype on
 " 加载文件类型插件，执行的是$vimRUNTIME/ftplugin.vim脚本
@@ -709,12 +710,13 @@ map <F2> "+y
 map <F3> "+p
 imap <F3> <ESC> "+p i
 " 按下F4替换行首TAB键为空格并删除行尾空格
+set expandtab
 " map <F4> :set expandtab<CR> :%retab<CR> :1,$s/\s\+$//g<CR>
 " imap <F4> <ESC> :set expandtab<CR> :%retab<CR> :1,$s/\s\+$//g<CR>
 map <F4> :1,$s/\s\+$//g<CR>
 imap <F4> <ESC> :1,$s/\s\+$//g<CR>
 " 保存时自动删除下列类型文件的行尾空格
-autocmd FileType c,cpp,python,ruby,java,sh,html,javascript autocmd BufWritePre <buffer> :%s/\s\+$//e
+"autocmd FileType c,cpp,python,ruby,java,sh,html,javascript autocmd BufWritePre <buffer> :%s/\s\+$//e
 " 按下F12，关闭所有窗口
 map <F12> :qall<CR>
 imap <F12> <ESC> :qall<CR>
