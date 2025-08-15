@@ -468,7 +468,7 @@ int main (void)
 | --- | --- | --- |
 | aa | bb | cc |
 
-| 左对齐 | 右对齐 | 居中对齐<div style="width:100px;"> |
+| 左对齐 | 右对齐 | 居中对齐<div style="width:600px;"> |
 | :-- | --: | :-: |
 | aa | bb | cc |
 | aaaa | bbbb | cccc |

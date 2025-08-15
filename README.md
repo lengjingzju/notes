@@ -2,6 +2,10 @@
 
 本工程是个人学习时的笔记，其中 `C/C++编程笔记` `Makefile编程笔记` `Markdown使用笔记` 等较为深入，其它笔记可能浅尝辄止。
 
+## Linux环境配置方法
+
+在 Ubuntu 2x.04 / Debian 13 / Fedora 42 / AlmaLinux 10 / RockyLinux 10 / Manjaro 25 上测试过的个人 Linux 开发环境 [一键安装脚本](./tool/init_env/init_env.sh) 。
+
 ## 生成文档方法
 
 有以下两种生成文档的方式。
