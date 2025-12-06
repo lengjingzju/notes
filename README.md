@@ -55,6 +55,11 @@ $ cd src && ./md_auto_gen.sh
 - [Vim使用笔记](./src/md/note_vim.md)
 - [Markdown使用笔记](./src/md/note_markdown.md)
 
+### 源码学习
+
+- [Linux IPC示例代码](./code/linux_ipc)
+- [FFmpeg批量压制脚本](./code/video_convert/video_convert.sh)
+
 ## 版权声明
 
 本项目采用 **知识共享署名-非商业性使用 4.0 国际许可协议 (CC BY-NC 4.0)** 进行授权。
