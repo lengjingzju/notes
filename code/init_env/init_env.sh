@@ -101,9 +101,9 @@ EOF
 fi
 
 
-echo -e "\033[32m########## 设置Debian环境 ##########\033[0m"
-
 if [ "$osid" = "debian" ] && [ $(cat /etc/apt/sources.list | grep -c '^ *deb cdrom') -ne 0 ] ; then
+
+echo -e "\033[32m########## 设置Debian环境 ##########\033[0m"
 
 # 1. sudo提示未出现在sudoers文件中： `/etc/sudoers` 文件添加 `lengjing        ALL=(ALL:ALL) ALL`
 # 2. apt安装提示更换介质，插入cdrom：需要修改 `/etc/apt/sources.list`
@@ -126,9 +126,9 @@ EOF
 fi
 
 
-echo -e "\033[32m########## 设置RedHat系环境 ##########\033[0m"
-
 if  [ "$pkgtool" = "dnf" ] && [ "$osid" != "fedora" ] ; then
+
+echo -e "\033[32m########## 设置RedHat系环境 ##########\033[0m"
 
 # 启用开发仓库、附加仓库、非开源仓库
 sudo dnf config-manager --set-enabled crb
@@ -541,7 +541,7 @@ sudo apt install gedit gedit-plugins tree ffmpeg
 elif [ "$pkgtool" = "dnf" ]; then
 sudo dnf install gedit gedit-plugins tree ffmpeg ffmpeg-devel
 elif [ "$pkgtool" = "pacman" ]; then
-sudo dnf install bash-completion tree ffmpeg
+sudo pacman -S --needed bash-completion tree ffmpeg
 fi
 
 
@@ -591,18 +591,34 @@ fi
 if command -v rustc > /dev/null; then
 echo 'rustc has already been installed.'
 else
-#sudo apt install rustc cargo
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  # 或 rustup self update
+
+# The version of rustc installed by `pkgtool` is generally older than `sh.rustup.rs`
+
+#curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  # or rustup self update
+
+if [ "$pkgtool" = "apt" ]; then
+sudo apt install rustc cargo
+elif [ "$pkgtool" = "dnf" ]; then
+sudo dnf install rustc cargo
+elif [ "$pkgtool" = "pacman" ]; then
+sudo pacman -S --needed rustc cargo
+fi
+
 . "$HOME/.cargo/env"
+
 fi
 
 if command -v mdbook > /dev/null; then
 echo 'mdbook has already been installed.'
 else
-cargo install mdbook
-cargo install mdbook-katex
-cargo install mdbook-mermaid
-cargo install mdbook-pdf
-cargo install mdbook-toc
-cargo install mdbook-admonish
+
+# mdbook-katex和mdbook-admonish可能不兼容mdbook-v0.5.x，
+# 需要指定版本，下面是Debian13下的配置
+
+cargo install mdbook@0.4.52         # markdown编译器
+cargo install mdbook-katex          # 支持公式
+cargo install mdbook-mermaid@0.16.0 # 支持图表
+cargo install mdbook-pdf            # 支持pdf
+cargo install mdbook-toc@0.14.2     # 支持 `[TOC]` 生成目录；也可用 mdbook-pagetoc 生成右上侧目录
+cargo install mdbook-admonish       # 支持提示/警告框等
 fi

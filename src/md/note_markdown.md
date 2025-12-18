@@ -1757,12 +1757,24 @@ classDiagram
 
 ```bash
 sudo apt install rustc cargo
-cargo install mdbook            # 编译器
+cargo install mdbook            # markdown编译器
 cargo install mdbook-katex      # 支持公式
 cargo install mdbook-mermaid    # 支持图表
 cargo install mdbook-pdf        # 支持pdf
 cargo install mdbook-toc        # 支持 `[TOC]` 生成目录；也可用 mdbook-pagetoc 生成右上侧目录
 cargo install mdbook-admonish   # 支持提示/警告框等
+```
+
+* 注：mdbook-katex和mdbook-admonish可能 **不兼容mdbook-v0.5.x，需要指定版本** ，下面是Debian13下的配置
+
+```bash
+sudo apt install rustc cargo
+cargo install mdbook@0.4.52         # markdown编译器
+cargo install mdbook-katex          # 支持公式
+cargo install mdbook-mermaid@0.16.0 # 支持图表
+cargo install mdbook-pdf            # 支持pdf
+cargo install mdbook-toc@0.14.2     # 支持 `[TOC]` 生成目录；也可用 mdbook-pagetoc 生成右上侧目录
+cargo install mdbook-admonish       # 支持提示/警告框等
 ```
 
 * 更多插件参考 <https://github.com/rust-lang/mdBook/wiki/Third-party-plugins>
@@ -1893,6 +1905,9 @@ level = 2
 
 用户可用自定义css覆盖默认自动生成的的css，例如下面的 `assets/custom.css` 覆盖了默认生成的 `book/css/variables.css` 和 `book/css/general.css` 中的同类的某些设置，改变了默认显示页宽和表格样式。
 
+
+注：本工程的custom.css还做了图片居中，mermaid图表渲览图(下载)和代码(复制)切换等功能。
+
 ```
 :root {
     --sidebar-width: 300px;
@@ -1987,6 +2002,7 @@ async function main() {
             codeBlockTheme: 'github.css',
             printBackground: true,
             enableScriptExecution: true, // <= For running code chunks.
+            chromePath: '/usr/bin/google-chrome',  // <= Your chrome browser path.
         },
     });
 
@@ -2054,8 +2070,8 @@ else
 fi
 
 # move to html/pdf/epub folder
-savepath=../books
 if [[ $move != "0" ]]; then
+    savepath=../books
     if [[ $(( $output & 1 )) != "0" ]]; then
         mkdir -p $savepath/html
         mv md/*.html $savepath/html -f
@@ -2074,5 +2090,6 @@ if [[ $move != "0" ]]; then
 fi
 
 rm $js
-echo "Successful!"```
+echo "Successful!"
+```
 

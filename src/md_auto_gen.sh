@@ -69,7 +69,7 @@ async function main() {
             codeBlockTheme: 'github.css',
             printBackground: true,
             enableScriptExecution: true, // <= For running code chunks.
-            chromePath: '/usr/bin/google-chrome',
+            chromePath: '/usr/bin/google-chrome',  // <= Your chrome browser path.
         },
     });
 

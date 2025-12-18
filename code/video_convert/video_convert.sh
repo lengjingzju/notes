@@ -205,7 +205,7 @@ get_gop_params() {
     if [ $enc_hevc -eq 1 ]; then
         gop_params="-g $gop_size -x265-params keyint=${gop_size}:min-keyint=${gop_size}:no-scenecut=1"
     else
-        gop_params="$pass2_cmd -g $gop_size -keyint_min $gop_size -sc_threshold 0"
+        gop_params="-g $gop_size -keyint_min $gop_size -sc_threshold 0"
     fi
 
     echo "$gop_params"

@@ -4,7 +4,7 @@
 
 ## Linux环境配置方法
 
-在 Ubuntu 2x.04 / Debian 13 / Fedora 42 / AlmaLinux 10 / RockyLinux 10 / Manjaro 25 上测试过的个人 Linux 开发环境 [一键安装脚本](./tool/init_env/init_env.sh) 。
+在 Ubuntu 2x.04 / Debian 13 / Fedora 42 / AlmaLinux 10 / RockyLinux 10 / Manjaro 25 上测试过的个人 Linux 开发环境 [一键安装脚本](./code/init_env/init_env.sh) 。
 
 ## 生成文档方法
 
