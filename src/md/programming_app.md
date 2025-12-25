@@ -2099,7 +2099,7 @@ int mkfifo(const char *pathname, mode_t mode);
 | 关闭对象  | 无                  | 无              | shmdt() |
 | 控制操作  | msgctl()            | semctl()        | shmctl() |
 | 执行IPC   | msgsnd() / msgrcv() | msgop()         |   |
-|           | 发送/接收 消息      | 测试/调整 信号量 | 操作共享内存
+|           | 发送/接收 消息      | 测试/调整 信号量 | 操作共享内存 |
 
 * SYSV IPC描述符对系统全局可见，所有访问同一SYSV IPC对象的进程使用相同的描述符。
 * SYSV消息队列和SYSV信号量对对象的删除是立即生效的(注意安全地删除对象)， SYSV共享内存只有所有进程解除了映射后才会删除。

@@ -851,13 +851,13 @@ void (*fp)() noexcept(false); // fp 指向可能会抛出的函数
         * `if constexpr (条件) { 语句块 }` ：让代码在编译时就完成分支判断(C++17)
 <br>
 
-* `consteval` ：强制编译期执行的函数(C++20)
+* `constval` ：强制编译期执行的函数(C++20)
     * 核心语义：修饰的函数必须在编译期求值，否则编译失败，运行时调用非法
     * 典型场景：
         * 编译期静态检查(如参数验证)
         * 生成元数据(如字符串哈希、ID映射表)
   ```cxx
-  consteval int square(int x) { return x * x; } // 必须编译期调用
+  constval int square(int x) { return x * x; } // 必须编译期调用
   constexpr int a = square(5); // ✅ 编译期求值
   int b = square(10);          // ❌ 错误：运行时调用非法
   ```
@@ -2329,6 +2329,7 @@ private:    // 私有成员，只能在本类以及友元中访问
     * `public` ：公有成员，无访问限制，提供类的接口
     * `protected` ：受保护成员，只能在本类以及其继承类和友元中访问
     * `private` ：私有成员，只能在本类以及友元中访问，提供实现细节
+        * 注：本类的静态函数也可以通过指针访问私有成员
 <br>
 
 * 友元 `friend`
