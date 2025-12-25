@@ -16,6 +16,7 @@
 
 # 学习笔记
 
+- [GCC编译选项学习笔记](./md/gcc_options.md)
 - [SIMD学习笔记](./md/note_simd.md)
 - [USB/UVC学习笔记](./md/note_usb_uvc.md)
 - [Ubuntu学习笔记](./md/note_ubuntu.md)

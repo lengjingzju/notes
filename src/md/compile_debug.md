@@ -764,7 +764,7 @@ $ ldd myop
 | `disp /i $pc`         | 自动显示下一条汇编指令，`$pc`表示着指令的地址，/i则表示输出格式为机器指令码 |
 | `undisp <num>`        | 删除指定num编号的disp |
 | `d disp <num>`        | 删除指定num编号的disp |
-| `dis disp <num>`　    | 定num编号的disp失效 |
+| `dis disp <num>`      | 指定num编号的disp失效 |
 | `en disp <num>`       | 指定num编号的disp使能 |
 | `whatis <val>`        | 显示变量val的数据类型 |
 
@@ -805,8 +805,6 @@ $ ldd myop
 
 | 命令                  | 描述 |
 | --------------------- | ---- |
-| `info inferiors `     | 查询正在调试的进程 |
-| `inferior <ID>`       | 切换调试的进程 |
 | `info threads`        | 查看所有线程信息，gdb会为每个线程分配一个ID(和tid不同)，编号一般从1开始，后面的ID是指这个ID |
 | `thread <ID>`         | 切换当前调试的线程为指定ID的线程 |
 | `b <file>:<line> thread all` | 所有线程都在文件file的第line行有断点，如 `b malloc.c:128 thread all` |
@@ -818,6 +816,22 @@ $ ldd myop
 | `set pagination on/off` | 在使用backtrace时，在分页时是否停止 |
 | `set target-async on/off` | 同步和异步。同步，gdb在输出提示符之前等待程序报告一些线程已经终止的信息，而异步的则是直接返回 |
 | `set print thread-events on/off`| 线程创建是否提醒 |
+
+## 多进程命令
+
+| 命令 | 描述 |
+|------|------|
+| `attach <pid>` | 挂接进程 |
+| `detach` | 取消挂接的进程 |
+| `set follow-fork-mode <parent|child>` | fork创建子进程时，调试父进程还是子进程 |
+| `info inferiors` | 查看当前正在调试的所有进程列表 |
+| `inferior <ID>` | 切换到指定ID的进程进行调试 |
+| `add-inferior` | 添加一个新的待调试进程 |
+| `remove-inferiors <ID>` | 移除指定ID的进程（从调试列表中移除，不终止进程） |
+| `clone-inferior` | 克隆当前进程创建一个新的调试进程 |
+| `maint info sections` | 显示当前进程的内存段信息 |
+
+注：每个进程有自己的地址空间，断点和观察点是进程特定的。
 
 ### 信号命令
 
