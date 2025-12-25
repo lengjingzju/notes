@@ -46,6 +46,7 @@ $ cd src && ./md_auto_gen.sh
 
 ### 学习笔记
 
+- [GCC编译选项学习笔记](./src/md/gcc_options.md)
 - [SIMD学习笔记](./src/md/note_simd.md)
 - [USB/UVC学习笔记](./src/md/note_usb_uvc.md)
 - [Ubuntu学习笔记](./src/md/note_ubuntu.md)
