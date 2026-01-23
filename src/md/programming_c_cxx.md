@@ -1599,10 +1599,13 @@ int main() {
         * **被捕获的变量在lambda表达式被创建时拷贝，而不是运行时**
     * `[捕获列表]` : 捕获列表中名字前有 `&` 时通过引用访问，否则通过副本访问
         * `this` : 表明类的成员都可以通过引用访问
+            * 可通过 `this->member` 间接访问 或 `member` 直接访问，也可直接写
+            * 捕获列表不能直接捕获成员，例如不能 `[member]`，而是要 `[this]` 或 `[v=member]`
         * `*this` : 表明类的成员都可以通过值访问
     * `[&,捕获列表]` : 捕获列表中名字前通过副本访问，捕获列表中名字前不能有 `&` ，否则通过引用访问，捕获列表中可以出现 `this`
     * `[=,捕获列表]` : 捕获列表中名字前通过引用访问，捕获列表中名字前要有 `&`，否则通过副本访问，捕获列表中不可以出现 `this`
     * 表示式捕获：捕获列表允许右值的捕获，即允许捕获列表中使用表达式 (C++14)
+        * 例如 `[width = output_width, height = output_height]() { }`
     * 名字空间(包含全局空间)的变量永远是可访问的
 * 位于 `()` 中的参数列表，可能忽略，lambda表达式的最简方式是 `[]{}`
     * 泛型参数：参数允许使用 `auto` 泛型参数 (C++14)
@@ -3556,7 +3559,7 @@ template<class Key, class Compare = std::less<Key>, class Allocator = std::alloc
 ```
 
 * 基于红黑树(自平衡二叉搜索树)，元素按Key自动排序
-    * 必须定义Key的比较规则(默认 `std::less` )
+    * 需重载 `operator<` 定义Key的比较规则(默认 `std::less` )
     * 遍历结果为升序序列，适合范围查询
     * 自定义 `std::less` 需要实现静态成员函数 `constexpr bool operator()(const T& lhs, const T& rhs) const;` 的类
         * 若 `lhs < rhs` 则为 `true` ，否则为 `false`
@@ -3586,8 +3589,8 @@ template<class Key, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<
 ```
 
 * 基于哈希表(Bucket数组+链表/红黑树)，元素无序但访问高效
-    * Key需支持std::hash特化(或自定义哈希函数)
     * 需重载 `operator==` 解决哈希冲突
+    * Key需支持std::hash特化(或自定义哈希函数)
     * 自定义 `std::equal_to` 需要实现静态成员函数 `constexpr bool operator()(const T& lhs, const T& rhs) const;` 的类
         * 若 `lhs == rhs` 则为 `true` ，否则为 `false`
 
@@ -3597,6 +3600,85 @@ template<class Key, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<
 | unordered_multimap | Key-Value映射(Key可重复) | ✅ | 同上 | 同上 | 一键多值的快速映射 |
 | unordered_set | 唯一Key集合 | ❌ | 同上 | 同上 | 快速去重查询 |
 | unordered_multiset | 允许重复Key | ✅ | 同上 | 同上 | 允许重复的快速集合 |
+
+**侵入式例子：使用重载**
+
+```cxx
+struct MyPos {
+    uint16_t x;        // X坐标
+    uint16_t y;        // Y坐标
+
+    MyPos() : x(0), y(0) { }
+    MyPos(uint16_t ix, uint16_t iy) : x(ix), y(iy) { }
+
+    /* 无序关联容器必须重载== */
+    bool operator==(const MyPos& other) const {
+        return x == other.x && y == other.y;
+    }
+
+    /* 有序关联容器必须重载< */
+    bool operator<(const MyPos& other) const {
+        if (x != other.x) {
+            return x < other.x;
+        }
+        return y < other.y;
+    }
+};
+
+/* 无序关联容器必须特化key */
+namespace std {
+    template <>
+    struct hash<MyPos> {
+        size_t operator()(const MyPos& pos) const noexcept {
+            uint32_t v = ((uint32_t)pos.x << 16) + pos.y;
+            return std::hash<uint32_t>{}(v);
+        }
+    };
+}
+
+std::unordered_map<MyPos,int> cnt_umap;
+std::map<MyPos,int> cnt_map;
+```
+
+**非侵入式例子：定义函数对象**
+
+```cxx
+struct MyPos {
+    uint16_t x;        // X坐标
+    uint16_t y;        // Y坐标
+
+    MyPos() : x(0), y(0) { }
+    MyPos(uint16_t ix, uint16_t iy) : x(ix), y(iy) { }
+};
+
+/* 无序关联容器定义哈希函数对象 */
+struct MyPosHash {
+    size_t operator()(const MyPos& pos) const noexcept {
+        uint32_t v = ((uint32_t)pos.x << 16) + pos.y;
+        return std::hash<uint32_t>{}(v);
+    }
+};
+
+/* 无序关联容器定义相等比较函数对象 */
+struct MyPosEqual {
+    bool operator()(const MyPos& lhs, const MyPos& rhs) const noexcept {
+        return lhs.x == rhs.x && lhs.y == rhs.y;
+    }
+};
+
+/* 有序关联容器定义小于比较函数对象 */
+struct MyPosLess {
+    bool operator()(const MyPos& lhs, const MyPos& rhs) const noexcept {
+        if (lhs.x != rhs.x) {
+            return lhs.x < rhs.x;
+        }
+        return lhs.y < rhs.y;
+    }
+};
+
+std::unordered_map<MyPos,int,MyPosHash,MyPosEqual> cnt_umap;
+std::map<MyPos,int,MyPosLess> cnt_map;
+```
 
 ## STL容器操作(C++)
 

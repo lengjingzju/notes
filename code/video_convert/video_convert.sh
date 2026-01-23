@@ -633,19 +633,19 @@ encode_video() {
         fi
     # 如果没有缩放、裁剪、时间范围或帧率降低，检查是否需要跳过编码
     elif [ $bitrate -gt 0 ]; then
-        # 计算原始码率的1.2倍
-        local threshold_bitrate=$(echo "$bitrate * 1.2" | bc 2>/dev/null | cut -d. -f1)
+        # 计算目标码率的1.2倍
+        local threshold_bitrate=$(echo "$target_bitrate * 1.2" | bc 2>/dev/null | cut -d. -f1)
         # 如果bc命令失败，使用整数计算
         if [ -z "$threshold_bitrate" ]; then
-            threshold_bitrate=$((bitrate + bitrate / 5))
+            threshold_bitrate=$((target_bitrate + target_bitrate / 5))
         fi
 
-        if [ $target_bitrate -ge $threshold_bitrate ]; then
-            need_encode=false
-            skip_reason="目标码率(${target_bitrate}kbps) >= 原始码率(${bitrate}kbps) * 1.2"
-        else
-            echo -e "${YELLOW}需要降低码率 ${target_bitrate} < ${threshold_bitrate}，必须重新编码${NC}"
+        if [ $bitrate -gt $threshold_bitrate ]; then
             need_encode=true
+            echo -e "${YELLOW}重新编码: 原始码率(${bitrate}kbps) > 目标码率(${target_bitrate}kbps) * 1.2${NC}"
+        else
+            need_encode=false
+            skip_reason="原始码率(${bitrate}kbps) <= 目标码率(${target_bitrate}kbps) * 1.2"
         fi
     else
         # 原始码率为0，保留编码
