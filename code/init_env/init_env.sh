@@ -1,5 +1,10 @@
 #!/bin/bash
 
+ibus=n      # 是否安装ibus输入法
+# 先下载sogou输入法 https://shurufa.sogou.com/linux 到当前目录
+sogou=y     # 是否安装搜狗输入法（只在debian上生效）
+tools=y     # 是否安装其它有用的工具（只在debian上生效）
+
 # 在 Ubuntu 2x.04 / Debian 13 / Fedora 42 / AlmaLinux 10 / RockyLinux 10 / Manjaro 25 上测试过
 # Linux 三大主流包管理器核心命令对比表：
 # | 功能场景          | apt (Debian/Ubuntu)  | dnf (Fedora/RHEL)      | pacman (Arch/Manjaro)  |
@@ -13,6 +18,16 @@
 # | 搜索软件包        | `search <关键词>`    | `search <关键词>`      | `-Ss <关键词>`         |
 # | 查看包信息        | `show <包名>`        | `info <包名>`          | `-Si <包名>`           |
 # | 清理缓存          | `clean`              | `clean all`            | `-Sc`                  |
+
+# Debian13 默认没有将登录用户加入sudoers：
+sudo echo -e "\033[32m########## 测试用户是否是sudoers ##########\033[0m"
+if [ $? -eq 0 ]; then
+    echo "用户是sudoers, 继续运行"
+else
+    echo "用户不是sudoers, 'su -' 切换到 root，'usermod -aG sudo 用户名' 加入到 sudoers"
+    exit 1
+fi
+
 
 echo -e "\033[32m########## 获取系统ID和版本信息 ##########\033[0m"
 
@@ -101,26 +116,23 @@ EOF
 fi
 
 
-if [ "$osid" = "debian" ] && [ $(cat /etc/apt/sources.list | grep -c '^ *deb cdrom') -ne 0 ] ; then
+if [ "$osid" = "debian" ] && [ $(cat /etc/apt/sources.list | grep -c 'ustc') -eq 0 ] ; then
 
 echo -e "\033[32m########## 设置Debian环境 ##########\033[0m"
 
-# 1. sudo提示未出现在sudoers文件中： `/etc/sudoers` 文件添加 `lengjing        ALL=(ALL:ALL) ALL`
-# 2. apt安装提示更换介质，插入cdrom：需要修改 `/etc/apt/sources.list`
+# apt安装提示更换介质，插入cdrom：需要修改 `/etc/apt/sources.list`
 aptcfg=/etc/apt/sources.list
 vername=$(cat /etc/os-release | grep '^VERSION_CODENAME=' | cut -d '=' -f 2 | xargs echo)
 
 sudo cat <<EOF> $aptcfg
-deb http://mirrors.ustc.edu.cn/debian/ $vername main non-free-firmware
-deb-src http://mirrors.ustc.edu.cn/debian/ $vername main non-free-firmware
+deb http://mirrors.ustc.edu.cn/debian/ $vername contrib non-free main non-free-firmware
+deb-src http://mirrors.ustc.edu.cn/debian/ $vername main contrib non-free non-free-firmware
 
-deb http://security.debian.org/debian-security $vername-security main non-free-firmware
-deb-src http://security.debian.org/debian-security $vername-security main non-free-firmware
+deb http://mirrors.ustc.edu.cn/debian-security/ $vername-security main contrib non-free non-free-firmware
+deb-src http://mirrors.ustc.edu.cn/debian-security/ $vername-security main contrib non-free non-free-firmware
 
-# $vername-updates, to get updates before a point release is made;
-# see https://www.debian.org/doc/manuals/debian-reference/ch02.en.html#_updates_and_backports
-deb http://mirrors.ustc.edu.cn/debian/ $vername-updates main non-free-firmware
-deb-src http://mirrors.ustc.edu.cn/debian/ $vername-updates main non-free-firmware
+deb http://mirrors.ustc.edu.cn/debian/ $vername-updates main contrib non-free non-free-firmware
+deb-src http://mirrors.ustc.edu.cn/debian/ $vername-updates main contrib non-free non-free-firmware
 EOF
 
 fi
@@ -172,41 +184,6 @@ elif [ "$pkgtool" = "pacman" ]; then
 sudo pacman-mirrors -i -c China -m rank # 设置国内镜像
 sudo pacman -Syu
 fi
-
-
-echo -e "\033[32m########## 安装中文输入法 ##########\033[0m"
-
-# gnome ibus 输入法安装配置
-# 1. 需要“运行ibus-setup --> 输入法 --> 添加拼音输入法”
-# 2. 输入“设置 --> 键盘 --> 输入源 --> 添加输入源 --> 汉语(中国) --> 添加拼音输入法”
-# 3. 修改候选框的字体大小
-#    - `gnome-shell --version` 命令得到gnome版本
-#    - 下载 `https://extensions.gnome.org/extension/1121/ibus-font-setting/` 对应版本(metadata.json中有适配版本信息，可能要改)
-#    - 解压到 `/home/$USER/.local/share/gnome-shell/extensions/ibus-font-setting@ibus.github.com` 后重启
-#      - `ibus-font-setting@ibus.github.com` 取自metadata.json的uuid
-
-if [ "$pkgtool" != "pacman" ]; then
-
-if [ "$pkgtool" = "apt" ]; then
-sudo apt install ibus ibus-libpinyin
-elif [ "$pkgtool" = "dnf" ]; then
-sudo dnf install ibus ibus-libpinyin ibus-setup wqy-zenhei-fonts
-fi
-
-font_setting_plugin=assets/ibus-font-setting@ibus.github.com.tar.xz
-font_setting_dir=/home/$USER/.local/share/gnome-shell/extensions/ibus-font-setting@ibus.github.com
-if [ -e $font_setting_plugin ] && [ ! -e $font_setting_dir ]; then
-mkdir -p $(dirname $font_setting_dir)
-tar -xvf $font_setting_plugin -C $(dirname $font_setting_dir)
-fi
-
-fi
-
-# Manjaro KDE 输入法安装配置
-# 1. 左下角点击菜单找到 `Manjaro Application Utility` 程序打开
-# 2. 找到 `Extended language support` 选中其中一个子选项
-# 3. 点击右上部的 `UPDATE SYSTEM` 更新，完成后重启即可
-# 4. 设置字体大小：左左下角点击菜单找到 `系统设置` 程序打开，左侧找到 `输入法` 进入，下方找到 `配置附加组件` 进入，点击 `经典用户界面` 右侧的配置图标去设置
 
 
 echo -e "\033[32m########## 安装Gnome插件 ##########\033[0m"
@@ -575,6 +552,91 @@ export LANG=zh_CN.UTF-8
 fi
 
 
+echo -e "\033[32m########## 安装中文输入法 ##########\033[0m"
+
+# gnome ibus 输入法安装配置
+# 1. 需要“运行ibus-setup --> 输入法 --> 添加拼音输入法”
+# 2. 输入“设置 --> 键盘 --> 输入源 --> 添加输入源 --> 汉语(中国) --> 添加拼音输入法”
+# 3. 修改候选框的字体大小
+#    - `gnome-shell --version` 命令得到gnome版本
+#    - 下载 `https://extensions.gnome.org/extension/1121/ibus-font-setting/` 对应版本(metadata.json中有适配版本信息，可能要改)
+#    - 解压到 `/home/$USER/.local/share/gnome-shell/extensions/ibus-font-setting@ibus.github.com` 后重启
+#      - `ibus-font-setting@ibus.github.com` 取自metadata.json的uuid
+
+if [ "$pkgtool" != "pacman" ] && [ "$ibus" = "y" ]; then
+
+if [ "$pkgtool" = "apt" ]; then
+sudo apt install ibus ibus-libpinyin
+elif [ "$pkgtool" = "dnf" ]; then
+sudo dnf install ibus ibus-libpinyin ibus-setup wqy-zenhei-fonts
+fi
+
+font_setting_plugin=assets/ibus-font-setting@ibus.github.com.tar.xz
+font_setting_dir=/home/$USER/.local/share/gnome-shell/extensions/ibus-font-setting@ibus.github.com
+if [ -e $font_setting_plugin ] && [ ! -e $font_setting_dir ]; then
+mkdir -p $(dirname $font_setting_dir)
+tar -xvf $font_setting_plugin -C $(dirname $font_setting_dir)
+fi
+
+fi
+
+# Manjaro KDE 输入法安装配置
+# 1. 左下角点击菜单找到 `Manjaro Application Utility` 程序打开
+# 2. 找到 `Extended language support` 选中其中一个子选项
+# 3. 点击右上部的 `UPDATE SYSTEM` 更新，完成后重启即可
+# 4. 设置字体大小：左左下角点击菜单找到 `系统设置` 程序打开，左侧找到 `输入法` 进入，下方找到 `配置附加组件` 进入，点击 `经典用户界面` 右侧的配置图标去设置
+
+if [ "$osid" = "debian" ] && [ "$sogou" = "y" ] && [ ! -e /opt/sogoupinyin ]; then
+sogoudeb=$(ls sogoupinyin_*.deb 2>/dev/null | head -1)
+if [ -z "$sogoudeb" ] || [ ! -f "$sogoudeb" ]; then
+echo "请先下载sogou输入法 https://shurufa.sogou.com/linux 到当前目录"
+else
+
+echo -e "\033[32m########## 安装sogou输入法 ##########\033[0m"
+
+echo "1. 清理其他输入法"
+sudo apt autoremove --purge sogoupinyin
+sudo apt autoremove --purge fcitx5* fcitx5-pinyin fcitx5-table
+sudo apt autoremove --purge fcitx fcitx-bin fcitx-data ibus
+
+echo "2. 安装依赖"
+sudo apt install libqt5qml5 libqt5quick5 libqt5quickwidgets5 qml-module-qtquick2 libgsettings-qt1 fcitx
+
+echo "3. 下载搜狗输入法并安装"
+sudo dpkg -i $sogoudeb
+sudo apt install -f
+
+echo "4. 替换搜狗的依赖库为系统的版本"
+cd /opt/sogoupinyin/files/lib/qt5/lib
+for so in `ls *.so* | grep -v '.*\.bak'`; do
+    if [ -L $so ]; then
+        echo "[SYMB] $so"
+    elif [ -e /usr/lib/x86_64-linux-gnu/$so ]; then
+        echo "[LINK] $so"
+        sudo mv -f $so %so.bak
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/$so $so
+    else
+        echo "[KEEP] $so"
+    fi
+done
+
+cd /opt/sogoupinyin/files/lib/qt5/plugins
+for so in `ls */*.so*`; do
+    if [ -L $so ]; then
+        echo "[SYMB] $so"
+    elif [ -e /usr/lib/x86_64-linux-gnu/qt5/plugins/$so ]; then
+        echo "[LINK] $so"
+        sudo mv -f $so %so.bak
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/qt5/plugins/$so $so
+    else
+        echo "[KEEP] $so"
+    fi
+done
+
+echo "5. 请重启系统生效，如果不生效，请继续安装并替换上面[KEEP]的库(可以尝试链接系统其他版本的同名库)"
+fi
+fi
+
 echo -e "\033[32m########## 设置mdbook环境 ##########\033[0m"
 
 cargocfg=/home/$USER/.cargo/config.toml
@@ -621,4 +683,100 @@ cargo install mdbook-mermaid@0.16.0 # 支持图表
 cargo install mdbook-pdf            # 支持pdf
 cargo install mdbook-toc@0.14.2     # 支持 `[TOC]` 生成目录；也可用 mdbook-pagetoc 生成右上侧目录
 cargo install mdbook-admonish       # 支持提示/警告框等
+fi
+
+
+if [ "$osid" = "debian" ] && [ "$tools" = "y" ]; then
+
+echo -e "\033[32m########## 安装一些额外软件 ##########\033[0m"
+
+echo "更新所有软件到最新..."
+sudo apt update && sudo apt upgrade
+
+echo "安装一些编译依赖库..."
+sudo apt install gcc-multilib g++-multilib libc6-dev-i386 autopoint # 32位支持等
+sudo apt install linux-headers-$(uname -r) build-essential libglvnd-dev pkg-config # 编译驱动等
+
+echo "安装一些调试工具..."
+sudo apt install htop strace ltrace uftrace fatrace valgrind tcpdump wireshark iperf iperf3 nload nmon stress stress-ng
+
+echo "安装一些实用工具..."
+sudo apt install gdebi aptitude cpupower-gui tree meld geany dia p7zip unrar xchm silversearcher-ag
+
+echo "安装一些媒体工具..."
+sudo apt install vlc ffmpeg smplayer gimp
+
+echo "安装英伟达最新驱动参考..."
+cat <<'EOF'> /dev/stdout
+
+- 安装原因
+    - 直接 [官网](https://www.nvidia.cn/geforce/drivers/) .run 文件安装，结果导致黑屏
+    - Debian13 官方库中自带的驱动版本是550，不支持 RTX50XX
+
+- 参考链接
+    - https://zhuanlan.zhihu.com/p/2008228833522890222
+    - https://www.cnblogs.com/evilowl/p/19034942
+
+- 安装依赖
+
+```
+sudo apt -y install linux-headers-$(uname -r) build-essential libglvnd-dev pkg-config aptitude
+```
+
+- 下载并安装 CUDA keyring
+
+```
+wget https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt update
+```
+
+- 选择使用的分支，请综合官网和aptitude结果选择
+
+```
+aptitude search nvidia-driver-pinning
+sudo apt install nvidia-driver-pinning-595
+```
+
+- 安装开源驱动和CUDA组件（50系使用闭源驱动无法挂载驱动）
+
+```
+sudo apt install nvidia-open
+sudo apt install nvidia-driver-cuda
+```
+
+- 确认驱动加载正常
+
+```
+# 应看到 RTX50XX 的完整信息，包括温度、显存、驱动版本
+nvidia-smi
+
+# 应看到 nvidia、nvidia_uvm、nvidia_modeset、nvidia_drm 全部在列
+lsmod | grep nvidia
+
+# 查看 PreserveVideoMemoryAllocations，输出应为1
+cat /proc/driver/nvidia/params | grep PreserveVideoMemoryAllocations
+
+# 如果值为 0，执行以下命令修改
+echo 'options nvidia NVreg_PreserveVideoMemoryAllocations=1' | sudo tee /etc/modprobe.d/nvidia-power-management.conf
+```
+
+- 查看GPU使用率
+
+```
+sudo apt install nvtop
+nvtop
+```
+
+- 笔记本关闭合盖休眠（HandleLidSwitch相关选项的三个值为ignore）
+
+```
+# cat /etc/systemd/logind.conf | grep HandleLidSwitch
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
+```
+
+EOF
+
 fi
