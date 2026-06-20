@@ -124,7 +124,7 @@ echo -e "\033[32m########## 设置Debian环境 ##########\033[0m"
 aptcfg=/etc/apt/sources.list
 vername=$(cat /etc/os-release | grep '^VERSION_CODENAME=' | cut -d '=' -f 2 | xargs echo)
 
-sudo cat <<EOF> $aptcfg
+cat <<EOF> sources.list
 deb http://mirrors.ustc.edu.cn/debian/ $vername contrib non-free main non-free-firmware
 deb-src http://mirrors.ustc.edu.cn/debian/ $vername main contrib non-free non-free-firmware
 
@@ -134,7 +134,7 @@ deb-src http://mirrors.ustc.edu.cn/debian-security/ $vername-security main contr
 deb http://mirrors.ustc.edu.cn/debian/ $vername-updates main contrib non-free non-free-firmware
 deb-src http://mirrors.ustc.edu.cn/debian/ $vername-updates main contrib non-free non-free-firmware
 EOF
-
+sudo mv sources.list $aptcfg
 fi
 
 
@@ -735,14 +735,13 @@ sudo apt update
 
 ```
 aptitude search nvidia-driver-pinning
-sudo apt install nvidia-driver-pinning-595
+sudo apt install nvidia-driver-pinning-610
 ```
 
 - 安装开源驱动和CUDA组件（50系使用闭源驱动无法挂载驱动）
 
 ```
-sudo apt install nvidia-open
-sudo apt install nvidia-driver-cuda
+sudo apt install nvidia-open nvidia-driver-cuda
 ```
 
 - 确认驱动加载正常
