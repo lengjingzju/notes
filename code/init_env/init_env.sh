@@ -779,3 +779,36 @@ HandleLidSwitchDocked=ignore
 EOF
 
 fi
+
+echo "Windows删除UEFI多余的启动项参考..."
+cat <<'EOF'> /dev/stdout
+
+- 以管理员身份运行命令提示符，使用diskpart挂载UEFI分区
+
+```
+diskpart            # 进入磁盘分区工具命令行
+list disk           # 列出所有磁盘
+select disk 0       # 选定磁盘，第1块磁盘编号0（按实际修改）
+list partition      # 列出该磁盘的所有分区
+select partition 1  # 选定EFI分区（通常大小为100~500MB，类型为“系统”）
+assign letter=Z     # 挂载选定分区到Z盘（可自定义）
+...                 # 在另外的命令提示符窗口删除多余的启动项目
+remove              # 卸载分区
+exit                # 退出磁盘分区工具
+```
+
+- 以管理员身份另开一个命令提示符，删除不需要的启动项
+
+```
+bcdedit /enum firmware      # 列出所有启动项，关注两个字段“标识符”和“path”
+bcdedit /delete {identifier}# 通过“标识符”删除多余的启动项
+dir Z:\EFI\                 # 查看“\EFI”下启动项的目录
+rmdir /s /q Z:\EFI\“path”   # 删除多余的启动项目录，例如“rmdir /s /q Z:\EFI\ubuntu
+”
+```
+
+- 注意
+    - 不要删除 Microsoft 文件夹，否则 Windows 将无法启动
+    - 不要删除 \EFI\Boot\bootx64.efi，它是许多主板的默认后备启动文件，删除后可能导致无法识别启动设备
+EOF
+
