@@ -1930,6 +1930,8 @@ table thead th {
 
 `crossnote` 即是 `VSCode` 中的插件 `Markdown Preview Enhanced` 的核心，可以使用脚本(环境配置脚本中也有说明)自动生成html/pdf/epub等文件。
 
+注：文件太大可能导致渲染超时，此时需要去掉puppeteerWaitForTimeout上的注释并修改为合适的值。
+
 ```sh
 #!/bin/bash
 
@@ -2001,6 +2003,7 @@ async function main() {
             mathRenderingOption: 'KaTeX',
             codeBlockTheme: 'github.css',
             printBackground: true,
+            // puppeteerWaitForTimeout: 400000,
             enableScriptExecution: true, // <= For running code chunks.
             chromePath: '/usr/bin/google-chrome',  // <= Your chrome browser path.
         },

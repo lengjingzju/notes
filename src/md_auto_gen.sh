@@ -68,6 +68,7 @@ async function main() {
             mathRenderingOption: 'KaTeX',
             codeBlockTheme: 'github.css',
             printBackground: true,
+            // puppeteerWaitForTimeout: 400000,
             enableScriptExecution: true, // <= For running code chunks.
             chromePath: '/usr/bin/google-chrome',  // <= Your chrome browser path.
         },

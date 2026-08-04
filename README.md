@@ -27,6 +27,8 @@ $ cd src && ./md_auto_gen.sh
 
 - 运行上面命令前需要安装一些工具，见Markdown使用笔记的章节 [crossnote脚本](./src/md/note_markdown.md#crossnote脚本)
 - 生成html/pdf/epub书籍，位于 `books` 的相应文件夹下
+- 注：文件太大可能导致渲染超时，此时需要去掉puppeteerWaitForTimeout上的注释并修改为合适的值，例如programming_c_cxx.md生成的PDF有上千页。
+
 
 ## 笔记类型
 
