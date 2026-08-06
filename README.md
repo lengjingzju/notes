@@ -34,7 +34,7 @@ $ cd src && ./md_auto_gen.sh
 
 ### 编程笔记
 
-- [C/C++编程笔记](./src/md/programming_c_cxx.md)
+- [C/C++ 编程完全指南](./src/md/programming_c_cxx.md)
 - [Linux应用编程笔记](./src/md/programming_app.md)
 - [Linux驱动编程笔记](./src/md/programming_driver.md)
 - [Python编程笔记](./src/md/programming_python.md)
@@ -44,11 +44,10 @@ $ cd src && ./md_auto_gen.sh
 
 ### 调试笔记
 
-- [编译与调试笔记](./src/md/compile_debug.md)
+- [编译与调试完全指南](./src/md/compile_debug.md)
 
 ### 学习笔记
 
-- [GCC编译选项学习笔记](./src/md/gcc_options.md)
 - [SIMD学习笔记](./src/md/note_simd.md)
 - [USB/UVC学习笔记](./src/md/note_usb_uvc.md)
 - [Ubuntu学习笔记](./src/md/note_ubuntu.md)

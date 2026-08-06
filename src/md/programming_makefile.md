@@ -38,7 +38,8 @@
         * `-lname`              : 链接库 libname.so 或 libname.a，例如 `-lpthread` 是链接 libpthread.so 库
         * `-Ldir`               : 指定库文件的搜索路径
         * `-Wl,-soname=name`    : 指定生成动态库的名称，可以使用 `readelf -d libxxx.so` 读到这个名称
-        * `-Wl,-rpath-link=dir` : 指定子库文件链接的库文件的搜索路径
+        * `-Wl,-rpath-link=dir` : 指定链接时搜索共享库的路径（仅链接时有效，不写入可执行文件）
+        * `-Wl,-rpath=dir`      : 指定运行时搜索共享库的路径（写入可执行文件的 DT_RUNPATH/DT_RPATH）
         * `-Wl,--gc-sections`   : 按 section 链接，和编译对应的选项合用，则链接器 ld 不会链接未使用的函数，从而减小可执行文件大小
     * 定义变量
         * `-Dname`              : 定义宏 name，默认定义内容为 `1`
@@ -534,9 +535,15 @@ all:
     * `unexport var1 var2 ...`  : 取消传递某些变量到下级 Makefile 中，单独 `unexport` 取消表示传递所有变量
     * SHELL 和 MAKEFLAGS 不管你是否 export，其总是要传递到下层 Makefile 中
 
+* `$(MAKE)` 变量
+    * `$(MAKE)` 是 make 自身的路径引用，在命令块中使用 `$(MAKE)` 代替直接写 `make`，以确保递归调用时使用正确的 make 程序
+    * 包含 `$(MAKE)` 的命令行自动具有 `+` 前缀的效果（即使 `make -n` 也会执行）
+    * `$(MAKE)` 的命令行参数会自动通过 `MAKEFLAGS` 传递给子 make
+    * 示例: `subsystem: ; $(MAKE) -C subdir`
+
 * [隐式变量](https://www.gnu.org/software/make/manual/make.html)
     * 编译命令相关 `AR` `AS` `CC` `CXX` `CPP`(gcc -E) `LEX` `YACC`
-    * 编译标志相关 `ASFLAGS`(as) `CFLAGS`(c) `CXXFLAGS`(c++) LDFLAGS(ld)
+    * 编译标志相关 `ASFLAGS`(as) `CFLAGS`(c) `CXXFLAGS`(c++) `LDFLAGS`(ld) `CPPFLAGS`(预处理) `LDLIBS`(链接库)
     * 其它 `RM`(rm -f)
 
 * `MAKEFILE_LIST`
@@ -646,7 +653,8 @@ bar   := $(subst $(space),$(comma),$(foo))
 * shell 函数: `$(shell cmdline)` `$$(cmdline)`
     * `$(shell cmdline)`: 解析时展开，不允许顶格(即命令没有所属 target)直接调用，但可以用在变量的值、目标、依赖、命令块、函数参数中
         * 此调用执行命令扩展，这意味着它将 shell 命令作为参数并计算命令的输出
-        * 它对结果的唯一处理 make 是将每个(回车和)换行符转换为单个空格，如果有尾随(回车和)换行符，它将被简单地删除
+        * 它对结果的唯一处理 make 是将每个(回车和)换行符转换为单个空格，如果有尾随(回车和)换行符，它将被简单地删
+        * 注: `make -n` 模式下 `$(shell ...)` 仍会执行（因为它在解析阶段展开）
     * `$$(cmdline)`: 运行时展开，只能用在命令块中
 
 * 例子: 获取文件时间戳
@@ -751,7 +759,7 @@ $(call set_flags,CFLAGS,a.c b.c,-DDEBUG)
 
 ### 文件名函数
 
-* `$(dir names ...`)                    : 取目录
+* `$(dir names ...)`                    : 取目录
     * 功能: 从文件名序列中取出目录部分。目录部分是指最后一个斜杠(含)之前的部分，如果没有斜杠，则返回 `./`
     * 示例: `$(dir src/foo.c main)` 返回值是 `src/ ./`
 * `$(notdir names ...)`                 : 取文件名
@@ -792,6 +800,16 @@ $(call set_flags,CFLAGS,a.c b.c,-DDEBUG)
 * `$(foreach var,list,cmd)`             : 循环求值
     * 功能: 对 list 中的每一个单词赋值给变量 var ，var 作为 cmd 命令运行的变量循环执行 cmd，多次的运行结果使用空格相互连接
     * 示例: `files := $(foreach dir,$(dirs),$(wildcard $(dir)/*.c))` 返回值是 dirs 目录集下的所有 .c 文件列表
+
+### 信息输出函数
+
+* `$(info text)`                        : 打印信息
+    * 功能: 向标准输出打印 text，返回空字符串，常用于调试
+* `$(warning text)`                     : 打印警告
+    * 功能: 向标准错误输出打印警告信息（带文件名和行号前缀），返回空字符串，不会停止 make 执行
+* `$(error text)`                       : 打印错误并终止
+    * 功能: 向标准错误输出打印错误信息（带文件名和行号前缀），然后终止 make 执行
+    * 注意: `$(error ...)` 在解析阶段就会触发，如果放在条件分支中，只有条件为真时才会执行到
 
 ### 其它函数
 
@@ -923,11 +941,11 @@ $(modb)-y := srcb1.o srcb2.o ...
             * 如果生成模块使用的目标文件只有一个且等于 `modname.o`，那么这条语句要删除
     * 输出方式
         * 源码和编译输出同目录时编译命令: `make -C $(KERNEL_SRC) M=$(shell pwd) modules`
-        * 源码和编译输出分离时编译命令: `make -C $(KERNEL_SRC) O=(KERNEL_OUT) M=$(OUT_PATH) src=$(shell pwd) modules`
+        * 源码和编译输出分离时编译命令: `make -C $(KERNEL_SRC) O=$(KERNEL_OUT) M=$(OUT_PATH) src=$(shell pwd) modules`
 
 * 编译标志说明
     * `ccflags-y` `asflags-y` `ldflags-y`   : 设置调用 cc(编译) as(汇编) ld(链接) 命令使用的标志
         * 老的名称是 `EXTRA_CFLAGS` `EXTRA_AFLAGS` `EXTRA_LDFLAGS`
-    * `subdir-ccflags-y`` ubdir-asflags-y`  : 设置调用 cc(编译) as(汇编) 命令使用的标志，这些标志还会影响子目录的 Kbuild
+    * `subdir-ccflags-y` `subdir-asflags-y` : 设置调用 cc(编译) as(汇编) 命令使用的标志，这些标志还会影响子目录的 Kbuild
     * `ccflags-remove-y` `asflags-remove-y` : 删除调用 cc(编译) as(汇编) 命令使用的某些标志
     * `CFLAGS_xxx.o` `AFLAGS_xxx.o`         : 为生成特定目标 xxx.o 指定 cc(编译) as(汇编) 命令使用的标志

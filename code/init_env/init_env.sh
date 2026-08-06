@@ -695,7 +695,7 @@ sudo apt update && sudo apt upgrade
 
 echo "安装一些编译依赖库..."
 sudo apt install gcc-multilib g++-multilib libc6-dev-i386 autopoint # 32位支持等
-sudo apt install linux-headers-$(uname -r) build-essential libglvnd-dev pkg-config # 编译驱动等
+sudo apt install linux-headers-amd64 linux-headers-$(uname -r) build-essential libglvnd-dev pkg-config # 编译驱动等
 
 echo "安装一些调试工具..."
 sudo apt install htop strace ltrace uftrace fatrace valgrind tcpdump wireshark iperf iperf3 nload nmon stress stress-ng
@@ -720,7 +720,7 @@ cat <<'EOF'> /dev/stdout
 - 安装依赖
 
 ```
-sudo apt -y install linux-headers-$(uname -r) build-essential libglvnd-dev pkg-config aptitude
+sudo apt -y install linux-headers-amd64 linux-headers-$(uname -r) build-essential libglvnd-dev pkg-config aptitude
 ```
 
 - 下载并安装 CUDA keyring

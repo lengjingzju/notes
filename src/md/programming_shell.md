@@ -5,7 +5,79 @@
 * `echo $SHELL` 或 `echo $0` 可获知当前用户的默认 shell (即 `cat /etc/passwd` 对应用户的最后一列)，一般是 `bash`
     * 修改用户默认 shell 可以使用以下3种方法: 修改 `/etc/passwd` 文件最后一列，`sudo usermod --shell shell命令路径 用户名` 或 `sudo chsh --shell shell命令路径 用户名`
 * Makefile 使用的默认 shell 是 `/bin/sh` 指向的 shell (即 `readlink /bin/sh`)，Ubuntu 一般是 `dash`
-    * 修改 Makefile 默认 shell 可以重新设置符号链接 `cd /bin && sudo ln -sf shell名称 sh`，例如 `cd /bin && sudo ls -sf bash sh`
+    * 修改 Makefile 默认 shell 可以重新设置符号链接 `cd /bin && sudo ln -sf shell名称 sh`，例如 `cd /bin && sudo ln -sf bash sh`
+
+## Shell 种类与兼容性
+
+### 常见 Shell 对比
+
+| Shell | 路径 | 特点 | 典型发行版 |
+|-------|------|------|------------|
+| `bash` | `/bin/bash` | 功能最全，GNU 项目，支持数组、关联数组、`[[ ]]`、`$(( ))`、进程替换等 | 大多数 Linux 默认 |
+| `dash` | `/bin/dash` | Debian Almquist Shell，POSIX 兼容，启动极快，不支持 bash 扩展 | Ubuntu/Debian 的 `/bin/sh` |
+| `ash` (busybox) | `/bin/ash` | BusyBox 内置，极度精简，用于嵌入式/Initramfs | Alpine、嵌入式 Linux |
+| `zsh` | `/bin/zsh` | 兼容 bash，增强补全、主题、插件生态 | macOS 默认、Arch 可选 |
+| `fish` | `/usr/bin/fish` | 语法不兼容 POSIX，开箱即用 | 可选安装 |
+| `ksh` | `/bin/ksh` | Korn Shell，bash 的前身 | 商业 Unix |
+| `sh` | `/bin/sh` | 符号链接，指向 dash/bash/ash 等 | 视发行版而定 |
+
+### bash 与 dash/ash 的主要语法差异
+
+| 特性 | bash | dash / ash | 替代写法 |
+|------|------|------------|----------|
+| 数组 `array=(a b c)` | ✅ | ❌ | 使用位置参数 `set -- a b c` |
+| 关联数组 `declare -A` | ✅ | ❌ | 无直接替代 |
+| 双中括号 `[[ ]]` | ✅ | ❌ | 使用 `[ ]` 并加引号 |
+| 算术扩展 `$(( ))` | ✅ | ✅ (POSIX) | — |
+| `$[ ]` 算术 | ✅ | ❌ | 使用 `$(( ))` |
+| C风格 for `for((i=0;i<10;i++))` | ✅ | ❌ | `i=0; while [ $i -lt 10 ]; do ...; i=$((i+1)); done` |
+| 变量切片 `${var:1:3}` | ✅ | ❌ | 使用 `expr substr` 或 `cut` |
+| 进程替换 `<(cmd)` | ✅ | ❌ | 使用管道或临时文件 |
+| `source` 关键字 | ✅ | dash ✅ / ash ❌ | 使用 `.` (点号) |
+| `function` 关键字 | ✅ | ❌ | 使用 `fname() { }` |
+| `echo -e` 转义 | ✅ | dash 不需要 `-e`；ash 需要 | 使用 `printf` 更安全 |
+| `local` 变量 | ✅ | dash ✅ / ash ✅ | — |
+| `select` 语句 | ✅ | ❌ | 手动实现 |
+| `&>` 重定向 | ✅ | ❌ | `> file 2>&1` |
+| `{a..z}` 花括号展开 | ✅ | ❌ | 使用 `seq` 或循环 |
+| `+=` 字符串追加 | ✅ | ❌ | `var="${var}new"` |
+| `BASH_SOURCE` | ✅ | ❌ | `$0` |
+| `PIPESTATUS` 数组 | ✅ | ❌ | 无直接替代 |
+| `coproc` 协进程 | ✅ | ❌ | 使用命名管道 FIFO |
+| `mapfile`/`readarray` | ✅ | ❌ | 使用 `while read` 循环 |
+| `declare -n` (nameref) | ✅ (bash 4.3+) | ❌ | 使用 `eval` |
+| 正则匹配 `[[ =~ ]]` | ✅ | ❌ | 使用 `expr` 或 `grep` |
+
+### 编写 POSIX 兼容脚本的要点
+
+```sh
+#!/bin/sh  # 使用 sh 而非 bash，确保 dash/ash 兼容
+
+# 1. 不使用数组，用位置参数或字符串
+set -- "item1" "item2" "item3"
+for item in "$@"; do echo "$item"; done
+
+# 2. 不使用 [[ ]]，用 [ ] 且变量加引号
+if [ "$var" = "value" ]; then ...
+
+# 3. 不使用 $[ ]，用 $(( ))
+result=$((a + b))
+
+# 4. 不使用 source，用 .
+. /etc/profile
+
+# 5. 不使用 function 关键字
+myfunc() { echo "hello"; }
+
+# 6. 不使用 echo -e，用 printf
+printf "\t%s\n" "$var"
+
+# 7. 不使用 &>，用标准写法
+cmd > output.txt 2>&1
+
+# 8. 不使用花括号展开
+i=1; while [ $i -le 10 ]; do echo $i; i=$((i+1)); done
+```
 
 ## 目录
 
@@ -42,6 +114,7 @@
         * `useradd -m <username>`       : 为用户创建相应的帐号和用户家目录 `/home/username`
         * `userdel -r <username>`       : 删除用户账号和用户家目录
         * `usermod -a -G <groupname> <username>` : 将用户追加到用户组(例如串口组 dialout)
+            * `sermod -aG sudo <username>` : Debian 默认用户不是sudoers，需要 `su -` 切换到 root 用户运行此命令加入
     * `groupadd / groupmod / groupdel`  : 增加/删除/修改组 `/etc/group`
 <br>
 
@@ -121,6 +194,11 @@
             * `-i`              : 忽略大小写的差异
             * `-r`              : 使用正则表达式查找
         * `updatedb` 根据 `/etc/updatedb.conf` 的配置去更新 `/var/lib/mlocate` 数据库
+    * `type`                    : 显示命令类型(别名/函数/内建/外部命令)
+        * `type ls` → `ls is aliased to 'ls --color=auto'`
+        * `type cd` → `cd is a shell builtin`
+        * `type -a python` → 列出所有匹配
+    * `command -v <cmd>`        : POSIX 兼容的命令查找(替代 which)
 <br>
 
 * 特殊符号
@@ -133,8 +211,24 @@
     * `(cmd)`                   : 子 shell 命令组，当命令在子 shell 中执行时，不会对当前 shell 有任何影响，所有的改变仅限于子 shell 内
         * 小括号中多个命令之间用分号隔开，最后一个命令可以没有分号，各命令和括号之间不必有空格
         * 例如: `pwd;cd ..;pwd`当前目录改变了，加小括号后 `pwd;(cd ..);pwd` 当前目录没改变
-    * `{cmd}`                   : 命令区块
+    * `{cmd}`                   : 命令区块(在当前 shell 中执行)
     * `$?`                      : 最后运行的命令的结束代码(返回值)，成功值为0
+
+### 发行版包管理器对比
+
+不同 Linux 发行版使用不同的包管理器，常用命令对比如下：
+
+| 功能场景 | apt (Debian/Ubuntu) | dnf (Fedora/RHEL) | pacman (Arch/Manjaro) |
+|----------|---------------------|-------------------|------------------------|
+| 更新软件列表 | `apt update` | `dnf check-update` | `pacman -Sy` |
+| 升级所有软件 | `apt upgrade` | `dnf upgrade` | `pacman -Syu` |
+| 安装软件包 | `apt install <包名>` | `dnf install <包名>` | `pacman -S --needed <包名>` |
+| 卸载软件包 | `apt remove <包名>` | `dnf remove <包名>` | `pacman -R <包名>` |
+| 彻底卸载含配置 | `apt purge <包名>` | 无直接等效命令 | `pacman -Rns <包名>` |
+| 卸载软件含依赖配置 | `apt autoremove --purge` | `dnf autoremove` (不含配置) | `pacman -Rns $(pacman -Qdtq)` |
+| 搜索软件包 | `apt search <关键词>` | `dnf search <关键词>` | `pacman -Ss <关键词>` |
+| 查看包信息 | `apt show <包名>` | `dnf info <包名>` | `pacman -Si <包名>` |
+| 清理缓存 | `apt clean` | `dnf clean all` | `pacman -Sc` |
 
 ## 变量和数组
 
@@ -150,10 +244,16 @@
             * 单引号中的变量引用不会扩展，双引号的会扩展为它的值
         * **等号前后不能有空格**，`var = value` 不是赋值而是比较的意思
         * 变量默认是全局的，定义局部变量前面加 `local`
+        * `readonly var` 或 `declare -r var` : 定义只读变量
     * 变量引用: `$var` or `${var}`
         * 获取变量的值时如果变量名后面不是字母、数字和下划线，可以不加大括号
     * 变量值长度: `${#var}`
         * 获取变量值的长度，即字符串包含的字符数
+    * 变量默认值与替换
+        * `${var:-default}`     : var 未定义或为空时返回 default，不改变 var
+        * `${var:=default}`     : var 未定义或为空时返回 default，并将 var 设为 default
+        * `${var:+alternate}`   : var 已定义且非空时返回 alternate，否则返回空
+        * `${var:?message}`     : var 未定义或为空时输出 message 到 stderr 并退出
 <br>
 
 * 数组
@@ -170,7 +270,12 @@
         * `${array[*]}` or `${array[@]}`    : 数组所有元素值组成的列表
         * `${!array[*]}` or `${!array[@]}`  : 数组所有元素索引组成的列表
         * `${#array[*]}` or `${#array[@]}`  : 数组元素个数
-    * 注: dash 中不支持数组
+    * 数组操作
+        * `${array[@]:start:length}`        : 数组切片
+        * `unset array[n]`                  : 删除数组第n个元素
+        * `unset array`                     : 删除整个数组
+        * `array+=("new_elem")`             : 追加元素到数组
+    * 注: dash 中不支持数组；busybox ash 不支持数组
 <br>
 
 * 变量命令
@@ -185,6 +290,14 @@
         * 例如: `export LANG=en_US.UTF-8` 语言使用英文 `export LC_TIME=en_US.UTF-8` 日期使用英文
         * 例如: `export GIT_SSL_NO_VERIFY=1` 关闭 git 的 ssl 安全校验
     * `export -f fname`         : 导出函数
+    * `declare` / `typeset`     : 声明变量属性
+        * `declare -i var`      : 声明为整数
+        * `declare -a var`      : 声明为索引数组
+        * `declare -A var`      : 声明为关联数组
+        * `declare -r var`      : 声明为只读
+        * `declare -x var`      : 声明为导出(等同 export)
+        * `declare -p var`      : 显示变量定义
+    * `shift [n]`               : 将位置参数左移 n 个(默认1个)
 <br>
 
 * 变量切片 `${var:start:length}`
@@ -195,7 +308,7 @@
         * 可以省略 `:length`，此时表示切片到字符串结尾
         * `length` 大于最大长度时切片到字符串结尾
         * `length` 可以使用负数，此时不再表示长度的意思，而是切片到索引(不含)的意思
-        * 注: dash 中不支持变量切片
+        * 注: dash / ash 中不支持变量切片
     * 例子(定义 `var=www.google.com`)
         * `${var: -3}`          : 提取最后3个字符，也可以写成 `${var:(-3)}` ，不可以写成 `${var:-3}`，例子值为 "com"
         * `${var:4}`            : 提取第4个(不含)字符之后的所有字符，也可以写成 `${var: 4}`，例子值为 "google.com"
@@ -212,19 +325,27 @@
         * `${var%%.*}`          : 从左边开始，去掉第一个符号'.'右边的所有字符，例子值为 "www"
         * `${var#????}`         : 表示删除前面4个字符，例子值为 "google.com"
         * `${var%????}`         : 表示删除后面4个字符，例子值为 "www.google"
+    * 变量替换
+        * `${var/old/new}`      : 替换第一个匹配
+        * `${var//old/new}`     : 替换所有匹配
+        * `${var/#old/new}`     : 替换行首匹配
+        * `${var/%old/new}`     : 替换行尾匹配
+        * 注: dash/ash 不支持 `${var//}` 替换语法
 <br>
 
 * 变量计算
     * 整数计算: 不支持浮点型，`expression` 的运算符和表达式符合C语言运算规则即可
-        * `$[ expression ]`     : 取运算 `expression` 的值(注意 `expression` 前后有空格)，出现在 `[  ]` 中的变量名之前可加可不加 `$`
-        * `$(( expression ))`   : 取运算 `expression` 的值，出现在 `((  ))` 中的变量名之前可加可不加 `$`
+        * `$[ expression ]`     : 取运算 `expression` 的值(注意 `expression` 前后有空格)，出现在 `[  ]` 中的变量名之前可加可不加 `$` (注: bash 已废弃，dash/ash 不支持)
+        * `$(( expression ))`   : 取运算 `expression` 的值，出现在 `((  ))` 中的变量名之前可加可不加 `$` (POSIX 标准，所有 shell 支持)
         * `$(expr expression)`  : 取运算 `expression` 的值，出现在 `(  )` 中的变量名之前要加 `$` (注意 `expression` 变量和运算符之间必须有空格)
-        * `let expression`      : 进行 `expression` 运算更新值，使用 `let` 时，变量名之前不需要再添加 `$`
+        * `let expression`      : 进行 `expression` 运算更新值，使用 `let` 时，变量名之前不需要再添加 `$` (注: dash/ash 不支持 `let`)
             * 例如: `let num++ ; let num-- ; let num+=1 ; let num-=1 ; let num=1+1`
     * 高级计算: `echo "expression" | bc`
         * 设定小数精度，例如: `echo "scale=2;22/7" | bc` 将输出 3.14
         * 进制转换，`echo "obase=2;10" | bc` 将输出 1010 ; `echo "obase=10;ibase=2;1010" | bc` 将输出 10
         * 计算平方以及平方根，`echo "10^2" | bc` 将输出 100 ; `echo "sqrt(100)" | bc` 将输出 10
+    * 浮点计算替代: `awk 'BEGIN{printf "%.2f", 22/7}'` (无需安装 bc)
+    * 进制转换替代: `printf "%d" 0xFF` (十六进制转十进制)，`printf "%x" 255` (十进制转十六进制)
 
 ## 输入和输出
 
@@ -234,7 +355,8 @@
             * 不带引号时，没法在所要显示的文本中使用分号 `;` ，即使加 `-e` 也无法打印转义，例如: `echo -e \t` 会打印`\t`
             * 带单引号时，特殊字符和字面义相同，变量替换无效，例如: `echo '$SHELL'` 打印 `$SHELL`
             * 带双引号时，变量替换有效， 例如: `echo "$SHELL"` 或 `echo $SHELL` 打印 `/bin/bash`
-            * 不带引号时，echo 会把输出的换行符换成空格，而带双引号不会，例如: `echo $(ls -l)` 输出没有换行，`echo "$(ls -l)"` 输出有换行
+            * 不加引号时，命令替换会使输出中的换行符被 shell 进行字段拆分，最终 echo 用空格连接所有参数，因此输出变为单行；加双引号可以保留换行
+                - 例如: `echo $(ls -l)` 输出没有换行，`echo "$(ls -l)"` 输出有换行
         * 命令参数
             * `-n`              : 不换行，后面输出紧接着这行(echo 默认会将一个换行符追加到输出文本的尾部)
             * `-e`              : 启用 `ASCII-C 转义字符` 的解释，例如: `echo -e "\t"` 或 `echo -e '\t'` 会打印 tab，不加 -e 直接打印 `\t`
@@ -243,12 +365,15 @@
             * `\033[4x;3xm`     : 同时设置背景色和前景色(x是数字代表: `0` 黑 `1` 红 `2` 绿 `3` 黄 `4` 蓝 `5` 紫 `6` 天蓝 `7` 白)
             * `\033[4xm`        : 只设置背景色
             * `\033[3xm`        : 只设置前景色
-            * 注: dash 中颜色打印不需要 `-e`
+            * 注: dash 中颜色打印不需要 `-e`；ash 中需要 `-e`
+            * 跨 shell 安全写法: `printf '\033[31m%s\033[0m\n' "红色文字"`
         * `echo { .. }`         : 生成值序列，例如: `echo {a..z}` `echo {0..100}`
-            * 注: dash 不支持这种语法
-    * `printf FORMAT [ARGUMENT]`: 格式化打印
+            * 注: dash 不支持这种语法；ash 不支持这种语法
+    * `printf FORMAT [ARGUMENT]`: 格式化打印(POSIX 标准，所有 shell 可用)
         * printf 使用格式化字符，空格分隔的打印的参数，例如: `printf "%3.2f %s\n" 3.1415926 $PATH`
         * printf 默认并不像 echo 命令一样会自动添加换行符
+        * 常用格式符: `%s` 字符串, `%d` 整数, `%f` 浮点, `%x` 十六进制, `%o` 八进制, `%%` 百分号, `\n` 换行, `\t` 制表符
+        * 宽度精度: `%10s` 右对齐宽度10, `%-10s` 左对齐宽度10, `%.2f` 保留2位小数
 <br>
 
 * 读取输入
@@ -259,6 +384,9 @@
             * `-n num`          : 最多读取的 num 个字符
             * `-d separator`    : 特定定界符 separator 作为输入行的结束，默认结束符是换行符，变量的输入分隔符是空格
             * `-s`              : 无回显读取，用于读取密码
+            * `-r`              : 不解释反斜杠(推荐总是加上)
+            * `-a array`        : 读入数组(bash 特有)
+        * 注: dash 的 `read` 不支持 `-p` `-t` `-n` `-s` `-a` 选项；ash 支持 `-r` 和 `-p`
 
 ```sh
 $ read -p "Please keyin your name and age: " your_name your_age
@@ -276,17 +404,35 @@ The age of lengjing is 30.
             * 将 stderr 单独重定向到一个文件，将 stdout 重定向到另一个文件，
         * `cmd 2>&1 output.txt` or `cmd &> output.txt`
             * stderr 和 stdout 都被重定向到同一个文件中
-            * 注: dash 中不支持这种写法，替代写法 `cmd > output.txt 2>&1`
+            * 注: dash / ash 中不支持 `&>` 写法，替代写法 `cmd > output.txt 2>&1`
         * `cmd 2> /dev/null`
             * 将 stderr 输出丢弃
+        * `cmd > /dev/null 2>&1`
+            * 丢弃所有输出
     * `cmd | tee output.txt`    : tee只能从stdin中读取，终端中打印，并复制一份输出将它重定向到一个文件中
         * tee 命令默认会将文件覆盖，可以使用  `-a` 选项追加内容
+    * Here Document ( heredoc )
+        * `cmd << DELIMITER ... DELIMITER` : 将多行文本作为 stdin 输入
+        * `cmd <<- DELIMITER` : 忽略行首的 Tab(不忽略空格)
+        * `cmd << 'DELIMITER'` : 不展开变量
+    * Here String ( bash 特有 )
+        * `cmd <<< "string"` : 将字符串作为 stdin 输入
+        * 注: dash/ash 不支持 `<<<`
 <br>
 
 * 自定义文件描述符 exec
     * 读 `exec 10<input.txt; cat <&10`
     * 写 `exec 11>output.txt; echo newline >&11`
     * 追加 `exec 12>>input.txt; echo appended line >&12`
+    * 关闭 `exec 10>&-` 或 `exec 10<&-`
+    * 保存和恢复
+        ```sh
+        exec 3>&1           # 保存 stdout 到 fd3
+        exec 1>file.txt     # 重定向 stdout 到文件
+        echo "to file"      # 写入文件
+        exec 1>&3           # 恢复 stdout
+        exec 3>&-           # 关闭 fd3
+        ```
 
 ## shell 脚本
 
@@ -300,6 +446,7 @@ The age of lengjing is 30.
         * shell 脚本需要添加运行权限 `chmod +x script_name.sh` 才可以执行
         * 命令的运行是从上而下、从左而右的分析与运行
         * 第1行 `#!/bin/bash` 在宣告这个 script 使用的 shell 类型
+            * 跨发行版写法: `#!/bin/sh`(POSIX兼容) 或 `#!/usr/bin/env bash`(自动查找bash路径)
         * 命令、选项与参数间的多个空白都会被忽略掉，空白行也将被忽略掉
         * 如果读取到一个换行符，就尝试开始运行该行(或该串)命令
         * 如果一行的内容太多，可以使用 `\` 来延伸至下一行
@@ -310,6 +457,10 @@ The age of lengjing is 30.
         * 脚本内部使用 `set -x` (在执行时显示参数和命令) 和 `set +x` (禁止调试) ，对包起来的命令进行调试
         * 脚本内部使用 `set –v` (当命令进行读取时显示输入) 和 `set +v` (禁止打印输入)，对包起来的命令进行调试
         * 脚本第一行写成 `#!/bin/bash -xv`，启用全程调试功能
+        * `set -e` : 遇到命令返回非零值时立即退出脚本
+        * `set -u` : 使用未定义变量时报错退出
+        * `set -o pipefail` : 管道中任一命令失败则整个管道返回非零(bash 特有)
+        * 推荐脚本开头: `set -euo pipefail`
     * 退出执行 `exit` `return`
        * 后面可以加数字指定退出状态码
        * `source script_name.sh` 时 `exit` 会退出当前终端，而 `return` 不会
@@ -322,9 +473,11 @@ The age of lengjing is 30.
     * `$*`                      : 所有参数列表，以 `"$1 $2 … $n"` 的形式输出所有参数，`$*` 不被双引号包围时，效果同 `$@`; 被双引号包围时，将所有的参数看做一份数据
     * `$@`                      : 所有参数列表，以 `"$1" "$2" … "$n"` 的形式输出所有参数，将每个参数都看做一份数据
     * `$#`                      : shell 的参数个数
-    * `${BASH_SOURCE[0]}`       : source 脚本时脚本的路径名
+    * `${BASH_SOURCE[0]}`       : source 脚本时脚本的路径名(bash 特有)
     * `$0`                      : 普通执行脚本时脚本的路径名
     * `$1~$n`                   : shell 脚本的各参数值，`$1` 是第1参数、`$2` 是第2参数 ... ，当n>=10时，需要使用 `${n}` 来获取参数
+    * `$_`                      : 上一条命令的最后一个参数
+    * `$-`                      : 当前 shell 选项标志(如 himB)
 
 ### 命令选项
 
@@ -339,7 +492,7 @@ The age of lengjing is 30.
         * 不带参数的选项: 参数声明背后没有冒号，类似 `long-c`; 使用时没有参数，类似 `--long-c`
 <br>
 
-* `getopts`                     : bash 的内部命令
+* `getopts`                     : bash 的内部命令(dash/ash 也支持)
     * `"a:c"`                   : 声明命令选项，`getopts` 只支持短命令选项且不支持可选带参数的选项
     * `OPTARG`                  : 特殊变量，自动设置此变量的值为当前命令选项的值(确切的说是下一个参数)
     * `OPTIND`                  : 特殊变量，自动设置此变量的值为下一个参数的序号
@@ -356,7 +509,7 @@ while getopts "a:c" opt; do
 done
 ```
 
-* `getopt`                      : 规范化命令参数
+* `getopt`                      : 规范化命令参数(外部命令，busybox 可能不包含)
     * getopt 参数说明
         * `-o shortopts`        : 声明短命令选项，只有长命令选项时此选项的值必须置空 `-o ''`，不能省略
         * `-l longopts`         : 声明长命令选项，多个长命令选项使用逗号 `,` 分隔
@@ -403,17 +556,20 @@ done
 
 * 定义函数
     * `function` 可以省略
-        * 注: dash 中没有 `function` 这个关键字
+        * 注: dash / ash 中没有 `function` 这个关键字
     * 函数括号里面不写参数
         * 函数里面参数用 `$1 $2 ...` 表示，注意函数里面的这些值不再是脚本的参数(`$0` 还是脚本名)
     * 支持递归调用，例如: Fork炸弹 `:(){ :|:& };:`
+    * 返回值: `return n` 返回退出码(0-255)，只能返回整数；返回数据用 `echo` + 命令替换
 
 ```sh
 function fname() {
     expression
 }
 ```
-or
+
+or (POSIX 兼容写法，推荐)
+
 ```sh
 fname() {
     expression
@@ -422,6 +578,7 @@ fname() {
 
 * 调用函数
     * 直接 `fname` 或 `fname arg1 arg2 ...` ，不需要括号
+    * 函数内使用 `local var` 声明局部变量(dash / ash 也支持 `local`)
 
 ### 条件测试
 
@@ -430,6 +587,7 @@ fname() {
 * 数值比较
     * `[ $var -eq value ]`
         * `-eq` 相等; `-ne` 不等; `-gt` 大于; `-ge` 大于等于; `-lt` 小于; `-le` 小于等于
+    * `(( var > value ))` : bash 算术比较(更直观)
 
 * 文件系统测试
     * `[ -f $var ]` :
@@ -437,6 +595,8 @@ fname() {
         * `-r` 文件可读; `-w` 文件可写; `-x` 文件可执行
         * `-u SUID`; `-g SGID`; `-k SBIT`
         * `-c` 是字符设备; `-b` 是块设备; `-L` 是符号链接; `-S` 是socket; `-p` 是FIFO/pipe
+        * `-h` 是符号链接(同 `-L`)
+        * `-N` 文件在最后一次读取后被修改过
         * 注：符号链接指向目录，`-d 这个符号链接` 也是目录
     * `[ file1 -nt file2 ]`
         * `-nt` 新; `-ot` 旧; `-ef` 指向同一inode
@@ -445,10 +605,11 @@ fname() {
     * `[[ $str1 = $str2 ]]`
         * `=` 相等; `==` 相等; `!=` 不等; `<` 小于; `>` 大于
         * 注1: 使用字符串比较时，最好用双中括号，因为有时候采用单个中括号会产生错误
-        * 注2: dash 中只能用 `=` 表示相等
+        * 注2: dash / ash 中只能用 `=` 表示相等
     * `[[ -z $var ]]`
         * `-z` 空字符串; `-n` 非空字符串
         * 注: `[ -n $var ]` 表示是否定义，变量赋值为空也是定义了
+    * 正则匹配(bash 特有): `[[ $str =~ regex ]]`
 
 * 多条件组合
     * `[[ -n $var ]] && [[ $str1 = $str2 ]]`
@@ -463,7 +624,7 @@ fname() {
     * 单括号的 TEST 命令不会对 `*` 进行扩展，而双括号 TEST 命令则会对 `*` 进行扩展
     * 单括号的 TEST 命令需要对大于号 `<` 和 小于号 `>` 加转义符 `\`，直接而双括号 TEST 命令不需要
     * `test` 指令相当于单中括号，即 `test condition` 相当于 `[ condition ]`
-    * 注: dash 中只能用单中括号
+    * 注: dash / ash 中只能用单中括号
 <br>
 
 * 例子: 测试单双中括号
@@ -537,6 +698,8 @@ fi
     * 最终以 `esac` 关键字结尾
     * pattern可使用 `|` 表示两个值，例如: `H264 | HEVC)`
     * pattern可使用范围表示，例如: `[a-z])`
+    * `;&` 继续执行下一个 pattern(不判断)(bash4+)
+    * `;;&` 继续判断下一个 pattern(bash4+)
 
 ```sh
 case $var in
@@ -562,6 +725,7 @@ esac
     * 例如: `for i in $(seq 1 10)`  or `for i in {1..10}`  seq不写开始时从1开始
     * 定界符 `IFS` 的默认值为空白字符(空格符 换行符 制表符)，可修改此变量从而使序列发生变化
     * 例如: `bIFS=$IFS; IFS=':'; for i in $(cat /etc/passwd); do echo $i;done`
+    * 注: `{1..10}` 花括号展开 dash/ash 不支持，用 `$(seq 1 10)` 替代
 
 ```sh
 for var in list; do
@@ -570,7 +734,7 @@ done
 ```
 
 * for 语句: 类似C语言的 for 循环，注意空格
-    * 注: dash 中不支持此种 for 循环
+    * 注: dash / ash 中不支持此种 for 循环
     * 例如: `for (( i=0; i<10; i++ ))`
 
 ```sh
@@ -582,6 +746,7 @@ done
 * while 语句: 条件为真时一直执行循环，直到条件为假
     * 注: `while true` 或 `while :` 表示死循环，但 `:` 是 shell 的内建命令，退出状态总是0，不会每次执行时生成子进程
         * `true`是作为一个二进制文件实现的，`:` 是 shell 的内建命令，它的退出状态总是为0
+    * 从文件读取循环: `while IFS= read -r line; do echo "$line"; done < file.txt`
 
 ```sh
 while [ condition ]; do
@@ -597,7 +762,72 @@ until [ condition ]; do
 done
 ```
 
-注: 循环也有 `break` `continue` 关键字
+注: 循环也有 `break` `continue` 关键字，`break n` 跳出 n 层循环
+
+### 信号捕获 trap
+
+* `trap 'commands' SIGNAL_LIST` : 捕获信号并执行命令
+    * 常用信号: `EXIT`(0) `HUP`(1) `INT`(2,Ctrl+C) `QUIT`(3) `TERM`(15) `ERR` `DEBUG` `RETURN`
+    * `trap - SIGNAL` : 恢复信号默认行为
+    * `trap '' SIGNAL` : 忽略信号
+    * `trap -p` : 列出当前所有 trap 设置
+
+```sh
+#!/bin/bash
+cleanup() {
+    echo "Cleaning up..."
+    rm -f "$tmpfile"
+}
+trap cleanup EXIT INT TERM
+
+tmpfile=$(mktemp)
+# ... 工作代码 ...
+```
+
+### 进程替换与后台任务
+
+* 进程替换(bash 特有)
+    * `diff <(cmd1) <(cmd2)` : 将命令输出作为文件参数
+    * `>(cmd)` : 将输出写入命令的 stdin
+    * 注: dash/ash 不支持进程替换，用命名管道(FIFO)或临时文件替代
+
+* 后台任务管理
+    * `cmd &`               : 后台运行
+    * `jobs -l`             : 查看后台任务
+    * `fg %n`               : 将第 n 个后台任务调回前台
+    * `bg %n`               : 让暂停的第 n 个后台任务继续运行
+    * `Ctrl+Z`              : 暂停当前前台任务
+    * `wait [pid]`          : 等待后台进程结束，返回其退出码
+    * `disown %n`           : 将任务从 shell 的作业列表中移除(终端关闭后进程不退出)
+    * `nohup cmd &`         : 忽略 HUP 信号运行
+
+* 命名管道(FIFO)
+    * `mkfifo /tmp/myfifo`  : 创建命名管道
+    * `echo data > /tmp/myfifo &` : 写入
+    * `cat /tmp/myfifo`     : 读取
+
+### 并发与并行
+
+* `xargs -P n` : 并行执行 n 个进程
+* `parallel` (GNU parallel): 更强大的并行工具
+* `&` + `wait` 实现简单并行:
+    ```sh
+    for i in 1 2 3 4 5; do
+        process_item "$i" &
+    done
+    wait  # 等待所有后台任务完成
+    ```
+* 限制并发数:
+    ```sh
+    MAX_JOBS=4
+    for file in *.txt; do
+        while [ "$(jobs -r | wc -l)" -ge $MAX_JOBS ]; do
+            wait -n  # bash 4.3+，等待任一任务完成
+        done
+        process "$file" &
+    done
+    wait
+    ```
 
 ## 正则表达式
 
@@ -605,12 +835,23 @@ done
 
 ### 通配符匹配
 
-* bash 通配符
+* bash 通配符(glob)
     * `*`                       : 匹配任意个(含0个)任意字符
     * `?`                       : 匹配1个任意字符
     * `[ - ]`                   : 匹配1个中括号内的字符，例如: [a-b] 匹配1个小写字母
     * `[^ ]`                    : 匹配1个非中括号内的字符，例如: [^0-9] 匹配1个除了数字外的字符
     * `{ , }`                   : 匹配1个大括号的字符或字符串，例如: `{ab,ba}` 匹配 ab 或 ba
+
+* 通配符控制(bash)
+    * `shopt -s nullglob`      : 无匹配时返回空而非字面模式
+    * `shopt -s nocaseglob`    : 通配符匹配忽略大小写
+    * `shopt -s extglob`       : 启用扩展通配符
+    * 扩展通配符(extglob):
+        * `?(pattern)`  : 匹配 0 或 1 次
+        * `*(pattern)`  : 匹配 0 或多次
+        * `+(pattern)`  : 匹配 1 或多次
+        * `@(pattern)`  : 匹配恰好 1 次
+        * `!(pattern)`  : 不匹配 pattern
 
 注: 通配符主要用于匹配完整文件名，正则表达式主要用于匹配文件中的行的部分文本
 
@@ -661,6 +902,7 @@ done
 
 * 定界(BRE ERE PCRE)
     * `\< \>`                   : 精确匹配，如: `\<the\>` 表示精确匹配the这个单词，而不匹配包含the字符的单词
+        * `\<` 和 `\>` 是 GNU grep 扩展，在 BRE 和 ERE 模式下有效，但 PCRE 中通常使用 `\b`
     * `^`                       : 匹配字符串开头，一般工具都是读取每行作为字符串，即 `^` 看做匹配行首
     * `$`                       : 匹配字符串结尾，即 `$` 看做匹配行尾，例如: `^$` 表示匹配空行 (注意 win 下的换行字符是 `^M$`，即 `\r\n`)
 <br>
@@ -793,9 +1035,13 @@ done
         * `-path GLOB -prune`   : 排除某些文件夹，例如: `find -path 'linux-*' -prune -o -path '.git'  -prune -o -iname "*.c" -print` 整条语句理解为当 prune 执行为 true 时，那么就不再执行后面的选项
     * 动作参数
         * `-print`              : 打印找到的文件的文件名，默认动作
+        * `-print0`             : 以 null 字符分隔打印(配合 `xargs -0` 处理含空格文件名)
         * `-delete`             : 删除找到的文件
         * `-exec command`       : 对找到的文件执行 command，注意该命令结尾的特殊标记 `\;`
             * command 中的 `{}` 表示对于每一个相应的匹配文件的文件名，例如: `find -name *.html -exec cp {} ../html \;`
+        * `-exec command {} +`  : 批量执行(更高效)，类似 xargs
+        * `-ok command`         : 同 `-exec` 但每次执行前询问确认
+    * 注: busybox 的 find 功能精简，不支持 `-regex` `-prune` `-exec {} +` 等高级选项
 <br>
 
 * 例子 find.sh: 查找指定目录下的指定文件名的文件
@@ -933,7 +1179,7 @@ echo -e "\033[32m$cmd\033[0m"
         * `grep -G`             : 表示使用基本正则表达式，**默认行为** (BRE)
         * `grep -E` or `egrep`  : 表示使用扩展正则表达式 (ERE)
         * `grep -P`             : 表示使用 Perl 正则表达式 (PCRE)
-        * `grep -F`             : 表示不使用正则表达式
+        * `grep -F`             : 表示不使用正则表达式(固定字符串匹配，速度快)
         * `grep -f file`        : 从文件中获取搜索的字符串的样式，每个样式一行，相当于与逻辑
         * `grep -e "pattern1" -e "pattern2"` : 同时匹配，等价于 `grep "pattern1" | grep "pattern2"`
     * 范围参数
@@ -953,6 +1199,9 @@ echo -e "\033[32m$cmd\033[0m"
         * `-o`                  : 只输出匹配部分的字符串，一行有多个匹配会输出多行，例如: `echo this is a line. | egrep -o "[a-z]+\."` 输出 `line.`
         * `-q`                  : 静默模式，无任何输出，命令运行结果 `$?`: 匹配到会返回 0，否则返回 1
         * `-A` / `-B` / `-C`    : 输出匹配行的周边行，选项后面可加数字，`A / B / C` 分别表示除了列出匹配行外，`后面 / 前面 / 两面` 的n行也列出来
+        * `--color=auto`        : 高亮匹配部分
+        * `-H` / `-h`           : 强制显示/隐藏文件名前缀
+    * 注: busybox grep 不支持 `-P`(PCRE)，部分版本不支持 `--include`/`--exclude`
 <br>
 
 * `ag [options] pattern [path ...]`
@@ -968,6 +1217,22 @@ echo -e "\033[32m$cmd\033[0m"
         * `-G GLOB`             : 仅搜索与 GLOB 匹配(匹配一部分即可)的文件名中的内容
         * `--ignore GLOB`       : 搜索排除与 GLOB 匹配文件或文件夹
         * 注: `-v` `-w` `-c` `-l` `-L` `-o` `-A` `-B` `-C` 等选项意义同 grep
+<br>
+
+* `rg [options] pattern [path]` (ripgrep)
+    * 功能
+        * 比 grep/ag 更快的递归搜索工具，Rust 编写
+        * 默认尊重 .gitignore，自动跳过二进制文件和隐藏文件
+    * 常用选项
+        * `-t type` / `-T type` : 包含/排除文件类型，如 `-t c` `-t cpp`
+        * `-g GLOB`             : 包含/排除 GLOB 模式
+        * `-l`                  : 只输出文件名
+        * `-c`                  : 输出每个文件的匹配数
+        * `-F`                  : 固定字符串匹配
+        * `-w`                  : 匹配完整单词
+        * `-i`                  : 忽略大小写
+        * `-n`                  : 显示行号(默认开启)
+        * `-A/-B/-C N`          : 上下文行
 <br>
 
 * 例子 grep.sh: 搜索指定目录下的指定后缀的文件中的字符串
@@ -1062,6 +1327,7 @@ echo -e "\033[32m$cmd\033[0m"
         * `--debug`             : 调试 sed
         * `-n`                  : 不打印模式空间的行，例如: `sed -n '2p' filename` 表示只打印 filename 文件的第2行
         * `-i`                  : 在文件中直接修改文件内容，不加此选项时默认打印到屏幕
+            * `sed -i.bak`      : 修改并创建 .bak 备份
 <br>
 
 * 匹配样式(pattern)
@@ -1772,7 +2038,7 @@ egrep -o '\b\w+\b' $filename | \
             * r(read contents in directory): 具有读取目录结构列表的权限(ls指令可用)
             * w(modify contents of directory): 具有改变该目录结构列表的权限
                 * 建立新的文件与目录
-                * 删除已经存在的文件与目录(不管对文件权限如何)
+                * 删除已经存在的文件或目录(不管对文件权限如何)
                 * 将已存在的文件或目录进行更名
                 * 搬移该目录内的文件、目录位置
             * x(access directory): 进入该目录的权限(cd指令可用)
@@ -2049,7 +2315,7 @@ egrep -o '\b\w+\b' $filename | \
 * 提交暂存区的指定文件到仓库区
     * `git commit [file1] [file2] ...`
 * 提交工作区自上次commit之后的变化，直接到仓库区
-    * `git commit -A`
+    * `git commit -a`
 * 提交时显示所有diff信息
     * `git commit -v`
 * 提交时在上一次的提交上盖楼
@@ -2224,9 +2490,9 @@ egrep -o '\b\w+\b' $filename | \
         * `git am`会直接将patch的所有信息打上去，而且不用重新git add和git commit
 * 合并内核patch，dest_patch_dir为要打补丁的目录，src_patch_dir为存放补丁的目录
     * 假设本地版本为4.9.150，网站下载增量补丁patch-4.9.150-151.xz，解压后修改名字patch-4.9.151
-    * .`/scripts/patch-kernel dest_patch_dir src_patch_dir`
+    * `./scripts/patch-kernel dest_patch_dir src_patch_dir`
 * diff 生成补丁和 patch 打补丁和删除补丁
-    * 例如: diff -rapuN --no-dereference -x .git linux-5.15 linux-5.15.120 > linux-5.15.120.patch
+    * 例如: `diff -rapuN --no-dereference -x .git linux-5.15 linux-5.15.120 > linux-5.15.120.patch`
 
 ```sh
 #!/bin/bash
@@ -2285,7 +2551,7 @@ fi
     * 注意:
         * 解决新的问题重做1-6步骤
         * 如果这个问题还要修改并且已经做了第4步，但是没有做第6步，重做2-6步骤，第4步使用 `git commit --amend`
-        * 如果这个问题还要修改(修改未merge)并且已经做了第6步，重做1-6步骤，第1步和第2步之间运行`Cherry Pick`命令(“问题网页downloads的Cherry Pick的字符串")，第4步使用 `git commit --amend`
+        * 如果这个问题还要修改(修改未merge)并且已经做了第6步，重做1-6步骤，第1步和第2步之间运行`Cherry Pick`命令("问题网页downloads的Cherry Pick的字符串")，第4步使用 `git commit --amend`
         * 如果这个问题还要修改(修改已merge)， 删除本地分支再重做1-6步骤
 
 * 其他repo命令
