@@ -35,45 +35,49 @@ sudo apt install libbsd-dev
 ### main函数
 
 ```c
+/*
+ * @brief   程序入口函数
+ * @param   argc    [IN] 命令行参数总个数（包含程序名本身）
+ * @param   argv    [IN] 命令行参数字符串指针数组，argv[0]为程序名，argv[argc]为NULL
+ * @param   envp    [IN] 环境变量字符串数组（非标准但广泛支持），最后一项为NULL
+ * @return  进程退出状态码，0表示成功，非0表示异常
+ */
 int main(int argc, char *argv[], ... /* char *envp[] */)
-    argc : 命令+命令行参数的总个数
-    argv : 指针数组的成员指针则逐一指向每个命令行的参数项。argv[0] 标识程序名本身; argv[argc] 的值是 NULL。
-    envp : 环境变量字符串数组，最后一个项为 NULL。
 ```
 
 ### 替换库函数
 
 * 假设xxxx是我们需要替换的库函数名
-* __wrap_xxxx是我们实现的替换库的函数
-* 链接时加上链接选项-Wl,--wrap=xxxx
-* 例如 LDFLAGS += -Wl,--wrap=malloc -Wl,--wrap=free
-* 此时我们可以使用__real_xxxx调用实际的库函数
-* 代码中使用xxxx的函数实际调用我们替换的库函数__wrap_xxxx
-* -Wl选项告诉编译器将后面的参数传递给链接器
+* `__wrap_xxxx` 是我们实现的替换库的函数
+* 链接时加上链接选项 `-Wl,--wrap=xxxx`
+* 例如 `LDFLAGS += -Wl,--wrap=malloc -Wl,--wrap=free`
+* 此时我们可以使用 `__real_xxxx` 调用实际的库函数
+* 代码中使用xxxx的函数实际调用我们替换的库函数 `__wrap_xxxx`
+* `-Wl` 选项告诉编译器将后面的参数传递给链接器
 
 ### getopt - 短命令行选项处理
 
 ```c
 /*
- * 功能: 短命令行选项处理
- * 返回:
- *    1. 如果短选项找到，那么将返回短选项对应的字符
- *    2. 如果所有命令行选项都解析完毕，返回-1
- *    3. 如果遇到选项字符不在optstring中，返回字符'?'
- *    4. 如果遇到丢失参数，那么返回值依赖于optstring中第一个字符，如果第一个字符是':'则返回':'；否则返回'?'并提示出错误信息
- * IN  : argc       main函数的argc
- * IN  : argv       main函数的argv
- * IN  : optstring  要解析短选项命令串(短选项类似 -h)
- * 说明: 循环调用此函数，直到返回-1
- *   返回值  命令参数名称字符
- *   optarg  指向当前选项参数值(如果有)的指针，optarg = argv[optind - 1]
- *   optind  下一个将被处理到的参数在argv数组中的索引值
- *   opterr  如果opterr=0，在getoptxxx遇到错误将不会输出错误信息到标准输出流，opterr在非0时，向屏幕输出错误
- *   optopt  (如果有)最后一个未知选项
- * optstring("a:b::cd:") 分别表示程序支持的命令行短选项有-a、-b、-c、-d，冒号含义如下:
- *   不带冒号: 只表示选项，如-c
- *   带1个冒号: 选项后面带一个参数，如-a 100
- *   带2个冒号: 表示选项后面带一个可选参数，如果带参数，则选项与参数直接不能有空格，如-b 或-b200
+ * @brief   短命令行选项处理
+ * @param   argc        [IN] main函数的argc
+ * @param   argv        [IN] main函数的argv
+ * @param   optstring   [IN] 要解析短选项命令串(短选项类似 -h)
+ * @return  如果短选项找到，返回短选项对应的字符；
+ *          如果所有命令行选项都解析完毕，返回-1；
+ *          如果遇到选项字符不在optstring中，返回字符'?'；
+ *          如果遇到丢失参数，返回值依赖于optstring中第一个字符，
+ *          如果第一个字符是':'则返回':'，否则返回'?'并提示出错误信息
+ * @note    循环调用此函数，直到返回-1。
+ *          返回值: 命令参数名称字符。
+ *          optarg: 指向当前选项参数值(如果有)的指针，optarg = argv[optind - 1]。
+ *          optind: 下一个将被处理到的参数在argv数组中的索引值。
+ *          opterr: 如果opterr=0，在getoptxxx遇到错误将不会输出错误信息到标准输出流，opterr在非0时，向屏幕输出错误。
+ *          optopt: (如果有)最后一个未知选项。
+ *          optstring("a:b::cd:") 分别表示程序支持的命令行短选项有-a、-b、-c、-d，冒号含义如下:
+ *            不带冒号: 只表示选项，如-c
+ *            带1个冒号: 选项后面带一个参数，如-a 100
+ *            带2个冒号: 表示选项后面带一个可选参数，如果带参数，则选项与参数直接不能有空格，如-b 或-b200
  */
 #include <unistd.h>
 extern char *optarg;
@@ -86,26 +90,27 @@ int getopt(int argc, char * const argv[],
 
 ```c
 /*
- * 功能: 长命令行选项处理
- * 返回:
- *    1. 如果短选项找到，那么将返回短选项对应的字符
- *    2. 如果长选项找到，如果flag为NULL，返回val；如果flag不为NULL，返回0
- *    3. 如果所有命令行选项都解析完毕，返回-1
- *    4. 如果遇到一个选项没有在短字符、长字符里面，或者在长字符里面存在二义性的，返回'?'
- *    5. 如果选项需要参数，忘了添加参数，返回值取决于optstring，如果其第一个字符是':'，则返回':'，否则返回'?'
- * IN  : argc       main函数的argc
- * IN  : argv       main函数的argv
- * IN  : optstring  要解析短选项命令串，方法同getopt
- * IN  : longopts   见struct option说明
- * OUT : longindex  非空时指向当前解析符合的longopts数组的索引值
- * 说明: 循环调用此函数，直到返回-1
- * 区别：
- *   getopt_long只将--name当作长参数，但getopt_long_only会将--name和-name两种选项都当作长参数来匹配
- *   在getopt_long在遇到-name时，会拆解成-n -a -m -e到optstring中进行匹配
- *   而getopt_long_only只在-name不能在longopts中匹配时才将其拆解成-n -a -m -e这样的参数到optstring中进行匹配
- * 注意：
- *   longopts的最后一个元素必须是全0填充，否则会报段错误
- *   短选项中每个选项都是唯一的，而长选项如果简写，也需要保持唯一性
+ * @brief   长命令行选项处理
+ * @param   argc        [IN] main函数的argc
+ * @param   argv        [IN] main函数的argv
+ * @param   optstring   [IN] 要解析短选项命令串，方法同getopt
+ * @param   longopts    [IN] 长选项结构体数组，见struct option说明
+ * @param   longindex   [OUT] 非空时指向当前解析符合的longopts数组的索引值
+ * @return  返回规则如下：
+ *          1. 如果短选项找到，那么将返回短选项对应的字符
+ *          2. 如果长选项找到，如果flag为NULL，返回val；如果flag不为NULL，返回0
+ *          3. 如果所有命令行选项都解析完毕，返回-1
+ *          4. 如果遇到一个选项没有在短字符、长字符里面，或者在长字符里面存在二义性的，返回'?'
+ *          5. 如果选项需要参数，忘了添加参数，返回值取决于optstring，如果其第一个字符是':'，则返回':'，否则返回'?'
+
+ * @note    循环调用此函数，直到返回-1。
+ *          区别：
+ *            getopt_long只将--name当作长参数，但getopt_long_only会将--name和-name两种选项都当作长参数来匹配。
+ *            在getopt_long在遇到-name时，会拆解成-n -a -m -e到optstring中进行匹配。
+ *            而getopt_long_only只在-name不能在longopts中匹配时才将其拆解成-n -a -m -e这样的参数到optstring中进行匹配。
+ *          注意：
+ *            longopts的最后一个元素必须是全0填充，否则会报段错误。
+ *            短选项中每个选项都是唯一的，而长选项如果简写，也需要保持唯一性。
  */
 #include <getopt.h>
 struct option {
@@ -135,13 +140,13 @@ int getopt_long_only(int argc, char * const argv[],
 
 ```c
 /*
- * 功能: 获取/设置utc时间
- * 返回: gettimeofday成功返回0，失败返回-1
- * tv    返回/设置的时间，tv_sec是秒，tv_usec是微秒
- * tz    时区，已废弃，应该置为 NULL
- * timep 不为NULL时放置返回的时间，可以为NULL
- * delta 需要调整的时间，系统时间 = 原来的系统时间 + delta。
- * olddelta 按delta调整的时间可能未调整完成，剩下未调整的放入olddelta，可以为NULL
+ * @brief   获取/设置utc时间
+ * @param   tv      [IN/OUT] 返回/设置的时间，tv_sec是秒，tv_usec是微秒
+ * @param   tz      [IN/OUT] 时区，已废弃，应该置为 NULL
+ * @param   timep   [OUT] 不为NULL时放置返回的时间，可以为NULL
+ * @param   delta   [IN] 需要调整的时间，系统时间 = 原来的系统时间 + delta
+ * @param   olddelta [OUT] 按delta调整的时间可能未调整完成，剩下未调整的放入olddelta，可以为NULL
+ * @return  gettimeofday成功返回0，失败返回-1
  */
 struct timeval {
     time_t      tv_sec;     /* Seconds since 00:00:00, 1 Jan 1970 UTC */
@@ -157,15 +162,17 @@ int adjtime(struct timeval *delta, struct timeval *olddelta);
 
 ```c
 /*
- * 功能: 秒数和分解时间转换
- * 返回: gmtime/localtime 成功返回静态分配的UTC/本地分解时间指针，失败返回NULL
- *       mktime 成功返回时间秒数，失败返回-1
- * 说明: gmtime_r() 和 localtime_r()为对应的可重入版本。
- * tm_sec可以为60是考虑闰秒，DST表示夏令时，= 0不考虑夏令时，> 0，总是夏令时; < 0，按日期是否设置夏令时。
- * mktime的timeptr不需要遵循tm限制，超过显示会自动计算进位。
+ * @brief   秒数和分解时间转换
+ * @param   timep   [IN] 指向time_t的指针
+ * @param   timeptr [IN] 指向tm结构体的指针
+ * @return  gmtime/localtime 成功返回静态分配的UTC/本地分解时间指针，失败返回NULL；
+ *          mktime 成功返回时间秒数，失败返回-1
+ * @note    gmtime_r() 和 localtime_r()为对应的可重入版本。
+ *          tm_sec可以为60是考虑闰秒，DST表示夏令时，= 0不考虑夏令时，> 0，总是夏令时; < 0，按日期是否设置夏令时。
+ *          mktime的timeptr不需要遵循tm限制，超过显示会自动计算进位。
  */
 struct tm {
-    int tm_sec;     /* Seconds (0-60) */7
+    int tm_sec;     /* Seconds (0-60) */
     int tm_min;     /* Minutes (0-59) */
     int tm_hour;    /* Hours (0-23) */
     int tm_mday;    /* Day of the month (1-31) */
@@ -184,13 +191,19 @@ time_t mktime(struct tm *timeptr);
 
 ```c
 /*
- * 功能: 格式化日期时间
- * 返回: ctime/asctime 成功返回静态分配的时间字符串指针，失败返回NULL
- *       strftime tm时间到字符串，成功返回字节长度，并将时间字符串写入outstr，失败返回0
- *       strptime 字符串到tm时间，成功返回str的下一个未被处理的字符，并将分解时间写入timeptr，失败返回NULL
- * 说明: ctime_r()为对应的可重入版本。
- * ctime/asctime返回字符串类似 "Wen Jun  8 18:00:00 2011\n"
- * ctime是本地时间，format格式化选项见(P158表10-1)
+ * @brief   格式化日期时间
+ * @param   timep   [IN] 指向time_t的指针
+ * @param   timeptr [IN] 指向tm结构体的指针
+ * @param   outstr  [OUT] 格式化后的时间字符串缓冲区
+ * @param   maxsize [IN] outstr的最大长度
+ * @param   format  [IN] 格式化字符串
+ * @param   str     [IN] 待解析的时间字符串
+ * @return  ctime/asctime 成功返回静态分配的时间字符串指针，失败返回NULL；
+ *          strftime tm时间到字符串，成功返回字节长度，并将时间字符串写入outstr，失败返回0；
+ *          strptime 字符串到tm时间，成功返回str的下一个未被处理的字符，并将分解时间写入timeptr，失败返回NULL
+ * @note    ctime_r()为对应的可重入版本。
+ *          ctime/asctime返回字符串类似 "Wen Jun  8 18:00:00 2011\n"
+ *          ctime是本地时间，format格式化选项见(P158表10-1)
  */
 char *ctime(const time_t *timep);
 char *asctime(struct tm *timeptr);
@@ -202,12 +215,13 @@ char *strptime(const char *str, const char *format, struct tm *timeptr);
 
 ```c
 /*
- * 功能: 检索进程时间信息
- * 返回: 成功返回进程的总的时钟数，失败返回-1
- * 说明: clock_t 单位为 CLOCKS_PER_SEC(如10000)，
- * 系统定时器时钟频率(节拍率)HZ(用户空间为USER_Hz) <asm/param.h>: X86中默认100，新版默认1000，可调。
- * 全局变量jiffies(jiffies_64和jiffies分别是64位和32位的全局变量)用来记录自系统启动以来产生的节拍的总数。注意处理节拍回绕(溢出)。
- * 提高时间节拍率会带来更高的时间中断解析度，可提高时间驱动事件的解析度和准确度(平均误差为半个时钟周期)。
+ * @brief   检索进程时间信息
+ * @param   buf [OUT] 指向tms结构体的指针，用于存储进程时间信息
+ * @return  成功返回进程的总的时钟数，失败返回(clock_t)-1
+ * @note    clock_t 单位为 CLOCKS_PER_SEC(如10000)。
+ *          系统定时器时钟频率(节拍率)HZ(用户空间为USER_Hz) <asm/param.h>: X86中默认100，新版默认1000，可调。
+ *          全局变量jiffies(jiffies_64和jiffies分别是64位和32位的全局变量)用来记录自系统启动以来产生的节拍的总数。注意处理节拍回绕(溢出)。
+ *          提高时间节拍率会带来更高的时间中断解析度，可提高时间驱动事件的解析度和准确度(平均误差为半个时钟周期)。
  */
 struct tms {
     clock_t tms_utime;  /* User CPU time used by caller */
@@ -225,10 +239,10 @@ clock_t clock(void);
 
 * 文件描述符为非负整数。
 * 文件结束符EOF(End Of File): 在UNIX中，EOF表示能从交互式shell(终端)送出 Ctrl+D (习惯性标准)。在微软的DOS与Windows中送出 Ctrl+Z 。EOF的值通常为-1，但它依系统有所不同。
-* 系统提供/dev/fd/目录，Unix打开/dev/fd/n 相当于复制文件描述符n(有些os可以会忽略mode给的值，有些要求mode是实际mode的子集)。Linux表现不同，Linux把/dev/fd/n当做符号链接。有些系统提供/dev/fd/stdin, /dev/fd/stdout, /dev/fd/stderr 文件。
-    * STDIN_FILENO  标准输入(stdin) : 文件描述符为 0, 使用 < 或 <<
-    * STDOUT_FILENO 标准输出(stdout): 文件描述符为 1, 使用 > 或 >> (> 覆盖 / >>累加)
-    * STDERR_FILENO 标准错误输出(stderr): 文件描述符为 2, 使用 2> 或 2>>
+* 系统提供 `/dev/fd/` 目录，Unix打开 `/dev/fd/n`  相当于复制文件描述符n(有些os可以会忽略mode给的值，有些要求mode是实际mode的子集)。Linux表现不同，Linux把 `/dev/fd/n` 当做符号链接。有些系统提供 `/dev/fd/stdin` ,  `/dev/fd/stdout` ,  `/dev/fd/stderr` 文件。
+    * STDIN_FILENO  标准输入(stdin) : 文件描述符为 0, 使用 `<` 或 `<<`
+    * STDOUT_FILENO 标准输出(stdout): 文件描述符为 1, 使用 `>` 或 `>>` (`>` 覆盖 / `>>`累加)
+    * STDERR_FILENO 标准错误输出(stderr): 文件描述符为 2, 使用 `2>` 或 `2>>`
 
 * 内核维护的文件层次
     * 进程级的文件描述符表(文件描述符): 文件描述符标志(目前只有O_CLOEXEC标志); 对打开文件句柄的引用
@@ -256,7 +270,7 @@ clock_t clock(void);
     * O_RDWR        : 2 读写打开
     * O_EXEC        : 只执行打开
     * O_SEARCH      : 只搜索打开目录(还没有实现支持)
-        * 注: 上面5种模式只能指定其中1种，判断模式 accessMode = flag & OACCMODE, 将 accessMode 与上面的某1种模式比较。
+        * 注: 上面5种模式只能指定其中1种，判断模式 `accessMode = flag & OACCMODE` , 将 accessMode 与上面的某1种模式比较。
 
 * 文件状态标志(F_GETFL / F_SETFL)
     * O_APPEND      : 追加写，每次写操作之前，将文件偏移量设置在当前文件结尾处。
@@ -298,7 +312,7 @@ clock_t clock(void);
 * EISDIR  : 文件是目录却试图写，文件不是目录却设置了O_DIRECTORY
 * EMFILE  : 文件描述符数量达到进程资源上限
 * ENFILE  : 文件描述符数量达到系统允许上限
-* EROFS   : 只读文件系统却试图写打开
+* EROFS   : 只读文件系统却试图写
 * ETXTBSY : 可执行文件正在运行却试图写
 * EINVAL  : 文件系统不支持O_DIRECT，O_DIRECT不符合块大小的整数倍。
 
@@ -317,14 +331,14 @@ clock_t clock(void);
 
 ```c
 /*
- * 功能: 新建或打开文件
- * 返回: 成功返回进程的未用文件描述符中数值最小者(SUSv3规定)，失败返回-1
- * IN  : pathname   文件名字，默认符号链接会解引用
- * IN  : flags      访问标志
- * IN  : mode       访问权限，flags未指定O_CREAT时可省略mode
- * 说明: 不推荐使用creat(pathname, mode)新建文件，creat是只写模式，并且文件存在会清空文件内容
- * openat() 如果pathname是绝对路径，fd忽略，否则如果fd是 AT_FDCWD，则pathname相对当前工作目录路径，否则pathname相对fd文件所在目录路径。
- * 文件访问权限受 访问权限mode 、进程的umask、父目录默认访问控制共同影响。
+ * @brief   新建或打开文件
+ * @param   pathname [IN] 文件名字，默认符号链接会解引用
+ * @param   flags    [IN] 访问标志
+ * @param   mode     [IN] 访问权限，flags未指定O_CREAT时可省略mode
+ * @return  成功返回进程的未用文件描述符中数值最小者(SUSv3规定)，失败返回-1
+ * @note    不推荐使用creat(pathname, mode)新建文件，creat是只写模式，并且文件存在会清空文件内容。
+ *          openat() 如果pathname是绝对路径，fd忽略，否则如果fd是 AT_FDCWD，则pathname相对当前工作目录路径，否则pathname相对fd文件所在目录路径。
+ *          文件访问权限受 访问权限mode 、进程的umask、父目录默认访问控制共同影响。
  */
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -337,16 +351,19 @@ int creat(const char *pathname, mode_t mode);  // ==> open(pathname, O_CREAT | O
 
 ```c
 /*
- * 功能: 读取文件内容
- * 返回: 成功返回读取字节数(EOF返回0)，失败返回-1
- * IN  : fd         文件描述符
- * OUT : buffer     读取的数据存放的缓冲区
- * IN  : count      要读取数据的最大字节数，返回的读取字节数可能小于count
- * pread() 为指定偏移处读，且不会改变文件的当前偏移量
- * readv() 分散输入，从文件描述符位置读取一片连续的字节，散置于iov指定的缓冲区中，原子操作
- * preadv() 为指定偏移处分散输入
- * 从终端读取数据，默认遇到换行符'\n'调用终止，返回数据包括换行符。
- * read()不会在字符串末尾自动添加空字符'\0'。
+ * @brief   读取文件内容
+ * @param   fd      [IN] 文件描述符
+ * @param   buffer  [OUT] 读取的数据存放的缓冲区
+ * @param   count   [IN] 要读取数据的最大字节数，返回的读取字节数可能小于count
+ * @param   offset  [IN] pread/preadv指定偏移处读，且不会改变文件的当前偏移量
+ * @param   iov     [IN] readv/preadv分散输入的iovec数组
+ * @param   iovcnt  [IN] readv/preadv iovec数组的元素个数
+ * @return  成功返回读取字节数(EOF返回0)，失败返回-1
+ * @note    pread() 为指定偏移处读，且不会改变文件的当前偏移量。
+ *          readv() 分散输入，从文件描述符位置读取一片连续的字节，散置于iov指定的缓冲区中，原子操作。
+ *          preadv() 为指定偏移处分散输入。
+ *          从终端读取数据，默认遇到换行符'\n'调用终止，返回数据包括换行符。
+ *          read()不会在字符串末尾自动添加空字符'\0'。
  */
 struct iovec {
     void   *iov_base;
@@ -364,14 +381,17 @@ ssize_t preadv(int fd, const struct iovec *iov, int iovcnt, off_t offset);
 
 ```c
 /*
- * 功能: 写入文件内容
- * 返回: 成功返回写入字节数，失败返回-1
- * IN  : fd         文件描述符
- * IN  : buffer     要写入的数据存放的缓冲区
- * IN  : count      要写入的字节数，返回的写入字节数可能小于count
- * pwrite() 为指定偏移处写，且不会改变文件的当前偏移量
- * writev() 集中输出，将iov指定的缓冲区中数据连续写入文件，原子操作
- * pwritev() 为指定偏移处集中输出
+ * @brief   写入文件内容
+ * @param   fd      [IN] 文件描述符
+ * @param   buffer  [IN] 要写入的数据存放的缓冲区
+ * @param   count   [IN] 要写入的字节数，返回的写入字节数可能小于count
+ * @param   offset  [IN] pwrite/pwritev指定偏移处写，且不会改变文件的当前偏移量
+ * @param   iov     [IN] writev/pwritev集中输出的iovec数组
+ * @param   iovcnt  [IN] writev/pwritev iovec数组的元素个数
+ * @return  成功返回写入字节数，失败返回-1
+ * @note    pwrite() 为指定偏移处写，且不会改变文件的当前偏移量。
+ *          writev() 集中输出，将iov指定的缓冲区中数据连续写入文件，原子操作。
+ *          pwritev() 为指定偏移处集中输出。
  */
 #include <unistd.h>
 ssize_t write(int fd, void *buffer, size_t count);
@@ -385,18 +405,18 @@ ssize_t pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset);
 
 ```c
 /*
- * 功能: 改变文件偏移量
- * 返回: 成功返回新的偏移字节数，失败返回-1
- * IN  : fd         文件描述符
- * IN  : offset     相对偏移量
- * IN  : whence     参考位置，SEEK_SET 0 文件开头; SEEK_CUR 1 当前位置; SEEK_END 2 文件结尾。
- * 说明: 文件偏移量指的是当前位置相对文件头部的偏移字节数，文件第一个字节的偏移量为0。
- * 文件打开时，会将文件偏移量指向文件开始(未设置O_APPEND标志)。每次read() / write()调用会自动对偏移量进行调整，指向已读已写数据后的下一字节。
- * cur_offset = lseek(fd, 0, SEEK_CUR); //当前文件偏移量
- * lseek()不能用于管道、FIFO、socket、终端，否则返回错误，错误码 ESPIPE。
- * SEEK_CUR和SEEK_END时，offset可以为正负数; SEEK_SET时，offset只能为正数。
- * 文件偏移可以跨越文件结尾，在跨越结尾的偏移处写数据会在文件结尾到跨越结尾的偏移处形成文件空洞，读取空洞会以0填充buffer。
- * 一般不允许seek到文件头之前(有些设备支持负的偏移量)。
+ * @brief   改变文件偏移量
+ * @param   fd      [IN] 文件描述符
+ * @param   offset  [IN] 相对偏移量
+ * @param   whence  [IN] 参考位置，SEEK_SET 0 文件开头; SEEK_CUR 1 当前位置; SEEK_END 2 文件结尾
+ * @return  成功返回新的偏移字节数，失败返回-1
+ * @note    文件偏移量指的是当前位置相对文件头部的偏移字节数，文件第一个字节的偏移量为0。
+ *          文件打开时，会将文件偏移量指向文件开始(未设置O_APPEND标志)。每次read() / write()调用会自动对偏移量进行调整，指向已读已写数据后的下一字节。
+ *          cur_offset = lseek(fd, 0, SEEK_CUR); //当前文件偏移量
+ *          lseek()不能用于管道、FIFO、socket、终端，否则返回错误，错误码 ESPIPE。
+ *          SEEK_CUR和SEEK_END时，offset可以为正负数; SEEK_SET时，offset只能为正数。
+ *          文件偏移可以跨越文件结尾，在跨越结尾的偏移处写数据会在文件结尾到跨越结尾的偏移处形成文件空洞，读取空洞会以0填充buffer。
+ *          一般不允许seek到文件头之前(有些设备支持负的偏移量)。
  */
 #include <unistd.h>
 off_t lseek(int fd, off_t offset, int whence);
@@ -406,10 +426,10 @@ off_t lseek(int fd, off_t offset, int whence);
 
 ```c
 /*
- * 功能: 关闭文件
- * 返回: 成功返回0，失败返回-1
- * IN  : fd         文件描述符
- * 说明: 关闭一个文件会自动释放该进程加在该文件上的所有记录锁。进程关闭会自动关闭其打开的文件描述符。
+ * @brief   关闭文件
+ * @param   fd [IN] 文件描述符
+ * @return  成功返回0，失败返回-1
+ * @note    关闭一个文件会自动释放该进程加在该文件上的所有记录锁。进程关闭会自动关闭其打开的文件描述符。
  */
 #include <unistd.h>
 int close(int fd);
@@ -419,17 +439,18 @@ int close(int fd);
 
 ```c
 /*
- * 功能: 文件控制操作
- * 返回: 成功返回取决于cmd，失败返回-1
- * IN  : fd         文件描述符
- * IN  : cmd        命令，F_GETFL 检索; F_SETFL 修改
- * fcntl函数作用:
- * F_DUPFD / F_DUPFD_CLOEXEC    复制文件描述符号，说明见dup
- * F_GETFD / F_SETFD            获取/设置文件描述符标志，只有O_CLOEXEC标志
- * F_GETFL / F_SETFL            获取/设置文件状态标志
- * F_GETOWN / F_SETOWN          获取/设置异步IO(SIGIO SIGURG)所有权(进程ID(正值)和进程组ID(负值))
- * F_GETLK / F_SETLK / F_SETLKW 获取/设置文件锁
- * 说明: 除F_GETLK外，F_GETXXX 不需要填写第3个参数，函数返回值是特定值。
+ * @brief   文件控制操作
+ * @param   fd  [IN] 文件描述符
+ * @param   cmd [IN] 命令，F_GETFL 检索; F_SETFL 修改
+ * @param   arg [IN] 可选参数，取决于cmd
+ * @return  成功返回取决于cmd，失败返回-1
+ * @note    fcntl函数作用:
+ *          F_DUPFD / F_DUPFD_CLOEXEC    复制文件描述符号，说明见dup
+ *          F_GETFD / F_SETFD            获取/设置文件描述符标志，只有O_CLOEXEC标志
+ *          F_GETFL / F_SETFL            获取/设置文件状态标志
+ *          F_GETOWN / F_SETOWN          获取/设置异步IO(SIGIO SIGURG)所有权(进程ID(正值)和进程组ID(负值))
+ *          F_GETLK / F_SETLK / F_SETLKW 获取/设置文件锁
+ *          除F_GETLK外，F_GETXXX 不需要填写第3个参数，函数返回值是特定值。
  */
 #include <fcntl.h>
 int fcntl(int fd, int cmd, ... /* int arg */);
@@ -439,10 +460,11 @@ int fcntl(int fd, int cmd, ... /* int arg */);
 
 ```c
 /*
- * 功能: I/O 万能控制
- * 返回: 成功返回依赖request，失败返回-1
- * IN  : fd         文件描述符
- * IN  : request    请求
+ * @brief   I/O 万能控制
+ * @param   fd      [IN] 文件描述符
+ * @param   request [IN] 请求码
+ * @param   argp    [IN/OUT] 可选参数，取决于request
+ * @return  成功返回依赖request，失败返回-1
  */
 #include <sys/ioctl.h>
 int ioctl(int fd, int request, ... /* argp */);
@@ -452,16 +474,16 @@ int ioctl(int fd, int request, ... /* argp */);
 
 ```c
 /*
- * 功能: 复制文件描述符
- * 返回: 成功返回新的文件描述符(和oldfd指向同一文件句柄)，失败返回-1
- * IN  : oldfd      旧的文件描述符，若oldfd无效，返回错误且不关闭newfd，错误号 EBADF
- * IN  : newfd      新的的文件描述符，若newfd之前已经打开，会首先将其关闭，若oldfd == newfd，直接返回newfd，且不将其关闭。
- * IN  : flags      设置的标志，仅支持 O_CLOEXEC。
- * 说明: dup() 返回编号最低的未使用的文件描述符，dup2() dup3()返回指定的文件描述符newfd
- * newfd = fcntl(oldfd, F_DUPFD, startfd) 返回“>=startfd”的编号最低的未使用的文件描述符
- * newfd = fcntl(oldfd, F_DUPFD_CLOEXEC, startfd) 返回“>=startfd”的编号最低的未使用的文件描述符，并设置O_CLOEXEC标志。
- * 2 > &1  <==> dup2(1, 2) : 将标准错误重定向到标准输出
- * dup类函数得到的新文件描述符默认会关闭O_CLOEXEC标志。
+ * @brief   复制文件描述符
+ * @param   oldfd [IN] 旧的文件描述符，若oldfd无效，返回错误且不关闭newfd，错误号 EBADF
+ * @param   newfd [IN] 新的的文件描述符，若newfd之前已经打开，会首先将其关闭，若oldfd == newfd，直接返回newfd，且不将其关闭
+ * @param   flags [IN] 设置的标志，仅支持 O_CLOEXEC
+ * @return  成功返回新的文件描述符(和oldfd指向同一文件句柄)，失败返回-1
+ * @note    dup() 返回编号最低的未使用的文件描述符，dup2() dup3()返回指定的文件描述符newfd。
+ *          newfd = fcntl(oldfd, F_DUPFD, startfd) 返回“>=startfd”的编号最低的未使用的文件描述符。
+ *          newfd = fcntl(oldfd, F_DUPFD_CLOEXEC, startfd) 返回“>=startfd”的编号最低的未使用的文件描述符，并设置O_CLOEXEC标志。
+ *          2 > &1  <==> dup2(1, 2) : 将标准错误重定向到标准输出。
+ *          dup类函数得到的新文件描述符默认会关闭O_CLOEXEC标志。
  */
 #include <unistd.h>
 int dup(int oldfd);
@@ -473,11 +495,11 @@ int dup3(int oldfd, int newfd, int flags);
 
 ```c
 /*
- * 功能: 设置文件长度
- * 返回: 成功返回0，失败返回-1
- * IN  : pathname   文件名字，truncate()需要写权限，无需事先open文件，会对符号链接解引用。
- * IN  : fd         文件描述符，ftruncate()需要可写打开，不会改变当前文件偏移量。
- * IN  : length     设置的文件长度，小于当前文件长度则截断文件，大于当前文件长度则文件尾部填0形成空洞
+ * @brief   设置文件长度
+ * @param   pathname [IN] 文件名字，truncate()需要写权限，无需事先open文件，会对符号链接解引用
+ * @param   fd       [IN] 文件描述符，ftruncate()需要可写打开，不会改变当前文件偏移量
+ * @param   length   [IN] 设置的文件长度，小于当前文件长度则截断文件，大于当前文件长度则文件尾部填0形成空洞
+ * @return  成功返回0，失败返回-1
  */
 #include <unistd.h>
 int truncate(const char *pathname, off_t length);
@@ -488,17 +510,16 @@ int ftruncate(int fd, off_t length);
 
 ```c
 /*
- * 功能: 强制刷新内核缓冲到磁盘
- * 返回: 成功返回0，失败返回-1，
- * IN  : fd         文件描述符
- * 说明:
- * fsync()将文件数据和元数据刷新到磁盘，fdatasync()只将文件数据刷新到磁盘。
- * fsync()和fdatasync()需要等待刷新磁盘完成调用才会返回。
- * sync()将包含更新文件信息的所有内核缓冲区(数据块、指针块、与数据等)刷新到磁盘。
- * sync()调用，SUSv3规定直接返回，Linux需要等待刷新磁盘完成调用才会返回。Linux pdflush内核进程自动执行刷新。
- * 文件内容有4个区域:磁盘区、内核缓冲区、stdio缓冲区、用户数据区。 tlpi.P228.<图13.1:I/O缓冲小结>
- * read()和write()系统调用在操作磁盘文件时不会直接发起磁盘访问，而是仅仅在用户空间缓存区和内核空间缓存区(页面高速缓存)之间复制数据。
- * 数据传输时间取决于:系统调用时间、缓存之间交换数据时间、页面高速缓存和磁盘之间交换数据时间。
+ * @brief   强制刷新内核缓冲到磁盘
+ * @param   fd [IN] 文件描述符
+ * @return  成功返回0，失败返回-1
+ * @note    fsync()将文件数据和元数据刷新到磁盘，fdatasync()只将文件数据刷新到磁盘。
+ *          fsync()和fdatasync()需要等待刷新磁盘完成调用才会返回。
+ *          sync()将包含更新文件信息的所有内核缓冲区(数据块、指针块、与数据等)刷新到磁盘。
+ *          sync()调用，SUSv3规定直接返回，Linux需要等待刷新磁盘完成调用才会返回。Linux pdflush内核进程自动执行刷新。
+ *          文件内容有4个区域:磁盘区、内核缓冲区、stdio缓冲区、用户数据区。 tlpi.P228.<图13.1:I/O缓冲小结>
+ *          read()和write()系统调用在操作磁盘文件时不会直接发起磁盘访问，而是仅仅在用户空间缓存区和内核空间缓存区(页面高速缓存)之间复制数据。
+ *          数据传输时间取决于:系统调用时间、缓存之间交换数据时间、页面高速缓存和磁盘之间交换数据时间。
  */
 #include <unistd.h>
 int fsync(int fd);
@@ -526,9 +547,10 @@ void sync(void);
 
 ```c
 /*
- * 功能: 删除一个文件或目录(库函数)
- * 返回: 0，成功; -1，失败
- * 说明: 不会对符号链接解引用，文件是目录时调用rmdir()，否则调用unlink()
+ * @brief   删除一个文件或目录(库函数)
+ * @param   pathname [IN] 文件或目录的路径名
+ * @return  0，成功; -1，失败
+ * @note    不会对符号链接解引用，文件是目录时调用rmdir()，否则调用unlink()
  */
 #include <stdio.h>
 int remove(const char *pathname);
@@ -538,14 +560,15 @@ int remove(const char *pathname);
 
 ```c
 /*
- * 功能: 删除文件的一个名字(硬链接)
- * 返回: 0，成功; -1，失败
- * 说明:  不会对符号链接解引用，如果这个名字指向一个符号链接，则立即删除这个符号链接。
- * 可用于文件、socket、fifo或者一个设备，立即从文件系统中删除一个名字。
- * 删除一个名字后，打开这个文件的进程还可以继续对这个文件进行操作。
- * 当所有进程关闭这个文件的文件描述符并且文件的硬链接计数变为0，还会删除文件本身。
- * unlink()后如果再次open()同样名字的文件，必须使用O_CREAT标志，将会创建一个新的文件。
- * unlink()不能删除一个目录，删除目录使用rmdir()或remove()
+ * @brief   删除文件的一个名字(硬链接)
+ * @param   pathname [IN] 文件路径名
+ * @return  0，成功; -1，失败
+ * @note    不会对符号链接解引用，如果这个名字指向一个符号链接，则立即删除这个符号链接。
+ *          可用于文件、socket、fifo或者一个设备，立即从文件系统中删除一个名字。
+ *          删除一个名字后，打开这个文件的进程还可以继续对这个文件进行操作。
+ *          当所有进程关闭这个文件的文件描述符并且文件的硬链接计数变为0，还会删除文件本身。
+ *          unlink()后如果再次open()同样名字的文件，必须使用O_CREAT标志，将会创建一个新的文件。
+ *          unlink()不能删除一个目录，删除目录使用rmdir()或remove()
  */
 #include <unistd.h>
 int unlink(const char *pathname);
@@ -554,13 +577,13 @@ int unlink(const char *pathname);
 ### link - 给文件创建一个新名字(硬链接)
 ```c
 /*
- * 功能: 给文件创建一个新名字(硬链接)
- * bash: ln oldpath newpath
- * 返回: 0，成功; -1，失败
- * IN  : oldpath    文件原有名字，调用link()后还可以通过oldpath访问文件
- * IN  : newpath    文件新的名字，newpath调用前不能存在，否则调用失败，错误号EEXIST
- * 说明:  不会对符号链接解引用
- * 不能对目录创建硬链接，不能对其它文件系统分区的文件创建硬链接。(符号链接没有这2个限制)
+ * @brief   给文件创建一个新名字(硬链接)
+ * @param   oldpath [IN] 文件原有名字，调用link()后还可以通过oldpath访问文件
+ * @param   newpath [IN] 文件新的名字，newpath调用前不能存在，否则调用失败，错误号EEXIST
+ * @return  0，成功; -1，失败
+ * @note    bash: ln oldpath newpath
+ *          不会对符号链接解引用
+ *          不能对目录创建硬链接，不能对其它文件系统分区的文件创建硬链接。(符号链接没有这2个限制)
  */
 #include <unistd.h>
 int link(const char *oldpath, const char *newpath);
@@ -570,11 +593,11 @@ int link(const char *oldpath, const char *newpath);
 
 ```c
 /*
- * 功能: 创建一个符号链接文件
- * bash: ln -s filepath linkpath
- * 返回: 0，成功; -1，失败
- * IN  : filepath   文件名字，filepath调用前无需存在
- * IN  : linkpath   符号链接文件的名字，linkpath调用前不能存在，否则调用失败，错误号EEXIST
+ * @brief   创建一个符号链接文件
+ * @param   filepath [IN] 文件名字，filepath调用前无需存在
+ * @param   linkpath [IN] 符号链接文件的名字，linkpath调用前不能存在，否则调用失败，错误号EEXIST
+ * @return  0，成功; -1，失败
+ * @note    bash: ln -s filepath linkpath
  */
 #include <unistd.h>
 int symlink(const char *filepath, const char *linkpath);
@@ -584,12 +607,13 @@ int symlink(const char *filepath, const char *linkpath);
 
 ```c
 /*
- * 功能: 读取符号链接的文件内容
- * 返回: 成功返回读取字节数; 失败返回-1
- * OUT : buffer     读取的文件内容
- * IN  : bufsiz     buffer的大小，PATH_MAX。
- * 说明: 不会对符号链接解引用
- * 若符号链接内容长度大于bufsiz，会返回部分内容
+ * @brief   读取符号链接的文件内容
+ * @param   pathname [IN] 符号链接路径名
+ * @param   buffer   [OUT] 读取的文件内容
+ * @param   bufsiz   [IN] buffer的大小，PATH_MAX
+ * @return  成功返回读取字节数; 失败返回-1
+ * @note    不会对符号链接解引用
+ *          若符号链接内容长度大于bufsiz，会返回部分内容
  */
 #include <unistd.h>
 ssize_t readlink(const char *pathname, char *buffer, size_t bufsiz);
@@ -599,16 +623,18 @@ ssize_t readlink(const char *pathname, char *buffer, size_t bufsiz);
 
 ```c
 /*
- * 功能: 移动/重命名文件
- * 返回: 0，成功; -1，失败
- * 说明: 不会对符号链接解引用，rename对文件名进行操作
- * newpath 和 oldpath 同名时不进行任何操作且调用成功
- * newpath 已有文件存在时，会删除newpath原先指向的文件
- * oldpath 为文件时，newpath如果原先指向目录名则调用失败，错误号 EISDIR
- * oldpath 为目录时，newpath如果原先指向已有文件则调用失败，错误号 ENOTDIR
- * oldpath 为目录时，newpath如果原先指向非空目录则调用失败,错误号 ENOTTEMPTY
- * oldpath 为目录时, newpath如果是包含oldpath作为目录前缀则调用失败,错误号 EINVAL
- * 如果 newpath 和 oldpath 不是同一文件系统则调用失败,错误号 EXDEV
+ * @brief   移动/重命名文件
+ * @param   oldpath [IN] 原路径名
+ * @param   newpath [IN] 新路径名
+ * @return  0，成功; -1，失败
+ * @note    不会对符号链接解引用，rename对文件名进行操作。
+ *          newpath 和 oldpath 同名时不进行任何操作且调用成功。
+ *          newpath 已有文件存在时，会删除newpath原先指向的文件。
+ *          oldpath 为文件时，newpath如果原先指向目录名则调用失败，错误号 EISDIR。
+ *          oldpath 为目录时，newpath如果原先指向已有文件则调用失败，错误号 ENOTDIR。
+ *          oldpath 为目录时，newpath如果原先指向非空目录则调用失败,错误号 ENOTEMPTY。
+ *          oldpath 为目录时, newpath如果是包含oldpath作为目录前缀则调用失败,错误号 EINVAL。
+ *          如果 newpath 和 oldpath 不是同一文件系统则调用失败,错误号 EXDEV。
  */
 #include <unistd.h>
 int rename(const char *oldpath, const char *newpath);
@@ -618,10 +644,10 @@ int rename(const char *oldpath, const char *newpath);
 
 ```c
 /*
- * 功能: 创建一个新的目录
- * 返回: 0，成功; -1，失败
- * IN  : pathname   目录名字，pathname调用前不能存在，否则调用失败，错误号EEXIST
- * IN  : mode       权限模式，对set-user-id(s) set-group-id(s) sticky(t)的设置依赖实现
+ * @brief   创建一个新的目录
+ * @param   pathname [IN] 目录名字，pathname调用前不能存在，否则调用失败，错误号EEXIST
+ * @param   mode     [IN] 权限模式，对set-user-id(s) set-group-id(s) sticky(t)的设置依赖实现
+ * @return  0，成功; -1，失败
  */
 #include <sys/stat.h>
 int mkdir(const char *pathname, mode_t mode);
@@ -631,10 +657,11 @@ int mkdir(const char *pathname, mode_t mode);
 
 ```c
 /*
- * 功能: 删除一个空目录
- * 返回: 0，成功; -1，失败
- * 说明: 不能删除非空目录
- * 如果pathname是符号链接，调用失败，错误号 ENOTDIR
+ * @brief   删除一个空目录
+ * @param   pathname [IN] 目录路径名
+ * @return  0，成功; -1，失败
+ * @note    不能删除非空目录
+ *          如果pathname是符号链接，调用失败，错误号 ENOTDIR
  */
 #include <unistd.h>
 int rmdir(const char *pathname);
@@ -644,9 +671,11 @@ int rmdir(const char *pathname);
 
 ```c
 /*
- * 功能: 打开一个目录
- * 返回: 成功返回目录流句柄; 失败返回-1
- * 说明: 不会对符号链接解引用，文件是目录时调用rmdir()，否则调用unlink()
+ * @brief   打开一个目录
+ * @param   dirpath [IN] 目录路径名
+ * @param   fd      [IN] 已打开的目录文件描述符
+ * @return  成功返回目录流句柄; 失败返回NULL
+ * @note    不会对符号链接解引用
  */
 #include <dirent.h>
 DIR *opendir(const char *dirpath);
@@ -657,9 +686,10 @@ DIR *fdopendir(int fd);
 
 ```c
 /*
- * 功能: 读取目录条目(非重入)
- * 返回: 成功返回目录的一条条目(静态分配的数据)的指针; 失败或结尾返回NULL
- * 说明: 每调用readdir()一次，就从dirp目录流中读取下一条目，条目的顺序是添加条目的顺序
+ * @brief   读取目录条目(非重入)
+ * @param   dirp [IN] 目录流句柄
+ * @return  成功返回目录的一条条目(静态分配的数据)的指针; 失败或结尾返回NULL
+ * @note    每调用readdir()一次，就从dirp目录流中读取下一条目，条目的顺序是添加条目的顺序
  */
 #include <dirent.h>
 struct dirent {
@@ -674,11 +704,13 @@ struct dirent *readdir(DIR *dirp);
 
 ```c
 /*
- * 功能: 读取目录条目(重入版)
- * 返回: 0, 成功; > 0 ,失败
- * OUT : entry      读取到目录条目存放的buffer
- * OUT : result     如果读取到目录条目，则写入buffer的地址，如果目录流结尾则写入NULL
- * 说明: readdir_r()一次，就从dirp目录流中读取下一条目
+ * @brief   读取目录条目(重入版)
+ * @param   dirp   [IN] 目录流句柄
+ * @param   entry  [OUT] 读取到目录条目存放的buffer
+ * @param   result [OUT] 如果读取到目录条目，则写入buffer的地址，如果目录流结尾则写入NULL
+ * @return  0, 成功; > 0 ,失败
+ * @note    readdir_r()一次，就从dirp目录流中读取下一条目。
+ *          该函数已被POSIX.1-2008标记为废弃，建议使用readdir()配合外部锁或在单线程中使用。
  */
 #include <dirent.h>
 int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result);
@@ -688,8 +720,9 @@ int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result);
 
 ```c
 /*
- * 功能: 关闭目录
- * 返回: 成功返回0; 失败返回-1
+ * @brief   关闭目录
+ * @param   dirp [IN] 目录流句柄
+ * @return  成功返回0; 失败返回-1
  */
 #include <dirent.h>
 int closedir(DIR *dirp);
@@ -699,7 +732,9 @@ int closedir(DIR *dirp);
 
 ```c
 /*
- * 功能: 告诉目录流当前的偏移位置
+ * @brief   告诉目录流当前的偏移位置
+ * @param   dirp [IN] 目录流句柄
+ * @return  当前目录流的位置标识
  */
 #include <dirent.h>
 long telldir(DIR *dirp);
@@ -709,7 +744,9 @@ long telldir(DIR *dirp);
 
 ```c
 /*
- * 功能: 将目录流位置回移到起点
+ * @brief   将目录流位置回移到起点
+ * @param   dirp [IN] 目录流句柄
+ * @return  无
  */
 #include <dirent.h>
 void rewinddir(DIR *dirp);
@@ -719,7 +756,10 @@ void rewinddir(DIR *dirp);
 
 ```c
 /*
- * 功能: 将目录流位置移到到指定位置
+ * @brief   将目录流位置移到到指定位置
+ * @param   dirp   [IN] 目录流句柄
+ * @param   offset [IN] telldir()返回的位置标识
+ * @return  无
  */
 #include<dirent.h>
 void seekdir(DIR *dirp, long offset);
@@ -729,8 +769,9 @@ void seekdir(DIR *dirp, long offset);
 
 ```c
 /*
- * 功能: 目录流句柄转换为文件描述符
- * 返回: 成功返回文件描述符; 失败返回-1
+ * @brief   目录流句柄转换为文件描述符
+ * @param   dirp [IN] 目录流句柄
+ * @return  成功返回文件描述符; 失败返回-1
  */
 #include <dirent.h>
 int dirfd(DIR *dirp);
@@ -740,12 +781,12 @@ int dirfd(DIR *dirp);
 
 ```c
 /*
- * 功能: 文件树递归遍历(P300)
- * 返回: 完全遍历返回0; 失败返回-1; 成功返回func返回的第一个非0值
- * IN  : dirpath    目录名
- * IN  : func       对遍历到的文件执行的函数，如果返回0，会继续nftw遍历，返回非0停止nftw遍历
- * IN  : nopenfd    最大持有的文件描述符数目
- * IN  : flags      遍历顺序标志
+ * @brief   文件树递归遍历(P300)
+ * @param   dirpath [IN] 目录名
+ * @param   func    [IN] 对遍历到的文件执行的函数，如果返回0，会继续nftw遍历，返回非0停止nftw遍历
+ * @param   nopenfd [IN] 最大持有的文件描述符数目
+ * @param   flags   [IN] 遍历顺序标志
+ * @return  完全遍历返回0; 失败返回-1; 成功返回func返回的第一个非0值
  */
 #include <ftw.h>
 int nftw(const char *dirpath,
@@ -758,11 +799,11 @@ int nftw(const char *dirpath,
 
 ```c
 /*
- * 功能: 获取当前工作目录
- * 返回: 成功返回cwdbuf地址并将绝对路径写入cwdbuf; 失败返回NULL
- * OUT : cwdbuf     返回的绝对路径名存储的缓冲区
- * IN  : size       buffer的大小，一般设为PATH_MAX。如果当前工作目录名的实际长度大于size，将调用失败，错误号 ERANGE
- * 说明: 若buffer为NUL且size为0，调用会malloc一块内存返回。
+ * @brief   获取当前工作目录
+ * @param   cwdbuf [OUT] 返回的绝对路径名存储的缓冲区
+ * @param   size   [IN] buffer的大小，一般设为PATH_MAX。如果当前工作目录名的实际长度大于size，将调用失败，错误号 ERANGE
+ * @return  成功返回cwdbuf地址并将绝对路径写入cwdbuf; 失败返回NULL
+ * @note    若buffer为NULL且size为0，调用会malloc一块内存返回。
  */
 #include <unistd.h>
 char *getcwd(char *cwdbuf, size_t size);
@@ -772,8 +813,10 @@ char *getcwd(char *cwdbuf, size_t size);
 
 ```c
 /*
- * 功能: 改变当前工作目录
- * 返回: 成功返回0; 失败返回-1
+ * @brief   改变当前工作目录
+ * @param   pathname [IN] 目标目录路径名
+ * @param   fd       [IN] 目标目录的文件描述符
+ * @return  成功返回0; 失败返回-1
  */
 #include <unistd.h>
 int chdir(const char *pathname);
@@ -784,8 +827,9 @@ int fchdir(int fd);
 
 ```c
 /*
- * 功能: 改变进程的根目录(特权程序)
- * 返回: 成功返��0; 失败返回-1
+ * @brief   改变进程的根目录(特权程序)
+ * @param   pathname [IN] 新的根目录路径名
+ * @return  成功返回0; 失败返回-1
  */
 #include <unistd.h>
 int chroot(const char *pathname);
@@ -795,9 +839,10 @@ int chroot(const char *pathname);
 
 ```c
 /*
- * 功能: 解析路径名
- * 返回: 成功返回resolved_path地址并将绝对路径写入resolved_path; 失败返回NULL
- * OUT : resolved_path  返回的绝对路径名存储的缓冲区，至少为PATH_MAX长，若为空会自动malloc一块空间，需要自己free
+ * @brief   解析路径名
+ * @param   pathname      [IN] 待解析的路径名
+ * @param   resolved_path [OUT] 返回的绝对路径名存储的缓冲区，至少为PATH_MAX长，若为空会自动malloc一块空间，需要自己free
+ * @return  成功返回resolved_path地址并将绝对路径写入resolved_path; 失败返回NULL
  */
 #include <stdlib.h>
 char *realpath(const char *pathname, char *resolved_path);
@@ -807,14 +852,15 @@ char *realpath(const char *pathname, char *resolved_path);
 
 ```c
 /*
- * 功能: 解析路径字符串(不可重入)
- * 返回: dirname()成功返回父目录地址; 失败返回NULL
- *       basename()成功返回不含路径的文件名地址; 失败返回NULL
- * 说明: 忽略pathname末尾的斜杠 '/'
- * pathname为"/home/lengjing/"，dirname()返回"/home" ， basename返回"lengjing"
- * pathname不含斜杠，  dirname()返回 "." ， basename返回 pathname
- * pathname只含斜杠，  dirname()返回 "/" ， basename返回 "/"
- * pathname为空字符串，dirname()返回 "." ， basename返回 "."
+ * @brief   解析路径字符串(不可重入)
+ * @param   pathname [IN] 路径字符串
+ * @return  dirname()成功返回父目录地址; 失败返回NULL
+ *          basename()成功返回不含路径的文件名地址; 失败返回NULL
+ * @note    忽略pathname末尾的斜杠 '/'
+ *          pathname为"/home/lengjing/"，dirname()返回"/home" ， basename返回"lengjing"
+ *          pathname不含斜杠，  dirname()返回 "." ， basename返回 pathname
+ *          pathname只含斜杠，  dirname()返回 "/" ， basename返回 "/"
+ *          pathname为空字符串，dirname()返回 "." ， basename返回 "."
  */
 #include <libgen.h>
 char *dirname(const char *pathname);
@@ -834,20 +880,21 @@ char *basename(const char *pathname);
 
 ```c
 /*
- * 功能: 打开文件流
- * 返回: 返回文件流对象的指针，失败返回NULL
- * IN  : filename   文件名字
- * IN  : mode       打开模式
- * IN  : stream     给定文件流对象的指针
- * freopen()会尝试关闭stream文件流对象，然后返回对象关联到stream对象。
- * fdopen() 文件描述符转换为文件流
- * r 只读 r+ 读写;  w 只写 w+ 读写; a 追加写 a+ 读写; 左边的6个模式后面加 b 表示二进制文件。
- * 如果文件不存在，r 类型模式不能新建文件，w 类型和 a 类型模式会新建文件。如果文件存在，w 类型模式会清空文件。
- * a 类型模式在写文件前，将流的偏移量设置为文件结尾，总是在结尾处写，不管有没有调用fseek()。
- * + 类型，写流(输出)之后必须调用 fflush fseek fsetpos rewind 后才能读流(输入)，读流之后(若文件不在尾段)必须调用 fseek fsetpos rewind才能写流。
- * 二进制和文本模式的区别
- * 1.在windows系统中，文本模式下，文件以"\r\n"代表换行。若以文本模式打开文件，并用fputs等函数写入换行符"\n"时，函数会自动在"\n"前面加上"\r"。即实际写入文件的是"\r\n" 。
- * 2.在类Unix/Linux系统中文本模式下，文件以"\n"代表换行。所以Linux系统中在文本模式和二进制模式下并无区别。
+ * @brief   打开文件流
+ * @param   filename [IN] 文件名字
+ * @param   mode     [IN] 打开模式
+ * @param   stream   [IN] 给定文件流对象的指针
+ * @param   fd       [IN] 文件描述符
+ * @return  返回文件流对象的指针，失败返回NULL
+ * @note    freopen()会尝试关闭stream文件流对象，然后返回对象关联到stream对象。
+ *          fdopen() 文件描述符转换为文件流。
+ *          r 只读 r+ 读写;  w 只写 w+ 读写; a 追加写 a+ 读写; 左边的6个模式后面加 b 表示二进制文件。
+ *          如果文件不存在，r 类型模式不能新建文件，w 类型和 a 类型模式会新建文件。如果文件存在，w 类型模式会清空文件。
+ *          a 类型模式在写文件前，将流的偏移量设置为文件结尾，总是在结尾处写，不管有没有调用fseek()。
+ *          + 类型，写流(输出)之后必须调用 fflush fseek fsetpos rewind 后才能读流(输入)，读流之后(若文件不在尾段)必须调用 fseek fsetpos rewind才能写流。
+ *          二进制和文本模式的区别
+ *          1.在windows系统中，文本模式下，文件以"\r\n"代表换行。若以文本模式打开文件，并用fputs等函数写入换行符"\n"时，函数会自动在"\n"前面加上"\r"。即实际写入文件的是"\r\n" 。
+ *          2.在类Unix/Linux系统中文本模式下，文件以"\n"代表换行。所以Linux系统中在文本模式和二进制模式下并无区别。
  */
 #include <stdio.h>
 FILE *fopen(const char *filename, const char *mode);
@@ -859,9 +906,9 @@ FILE *fdopen(int fd, const char *mode);
 
 ```c
 /*
- * 功能: 文件流转换为文件描述符
- * 返回: 成功返回文件描述符>=0，失败返回-1
- * IN  : stream     文件流。
+ * @brief   文件流转换为文件描述符
+ * @param   stream [IN] 文件流
+ * @return  成功返回文件描述符>=0，失败返回-1
  */
 #include <unistd.h>
 int fileno(FILE *stream);
@@ -871,12 +918,12 @@ int fileno(FILE *stream);
 
 ```c
 /*
- * 功能: 从给定流读取数据
- * 返回: 返回读取元素个数(一般是nmemb)
- * OUT : ptr        读取数据存放的缓冲区
- * IN  : size       读取的元素的大小 sizeof()
- * IN  : nmemb      读取的元素的个数
- * IN  : stream     给定文件流对象的指针
+ * @brief   从给定流读取数据
+ * @param   ptr    [OUT] 读取数据存放的缓冲区
+ * @param   size   [IN] 读取的元素的大小 sizeof()
+ * @param   nmemb  [IN] 读取的元素的个数
+ * @param   stream [IN] 给定文件流对象的指针
+ * @return  返回读取元素个数(一般是nmemb)
  */
 #include <stdio.h>
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
@@ -886,8 +933,12 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 ```c
 /*
- * 功能: 向给定流写入数据
- * 返回: 返回写入元素个数(一般是nmemb)
+ * @brief   向给定流写入数据
+ * @param   ptr    [IN] 要写入的数据存放的缓冲区
+ * @param   size   [IN] 写入的元素的大小 sizeof()
+ * @param   nmemb  [IN] 写入的元素的个数
+ * @param   stream [IN] 给定文件流对象的指针
+ * @return  返回写入元素个数(一般是nmemb)
  */
 #include <stdio.h>
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
@@ -897,9 +948,10 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 ```c
 /*
- * 功能: 关闭给定文件流
- * 返回: 成功返回0，失败返回EOF
- * 说明: 流关闭之前会冲洗输出，丢弃输入。
+ * @brief   关闭给定文件流
+ * @param   stream [IN] 文件流
+ * @return  成功返回0，失败返回EOF
+ * @note    流关闭之前会冲洗输出，丢弃输入。
  */
 #include <stdio.h>
 int fclose(FILE *stream);
@@ -909,7 +961,9 @@ int fclose(FILE *stream);
 
 ```c
 /*
- * 功能: 返回流的当前偏移量，失败返回-1
+ * @brief   返回流的当前偏移量
+ * @param   stream [IN] 文件流
+ * @return  成功返回当前偏移量，失败返回-1
  */
 #include <stdio.h>
 long ftell(FILE *stream);
@@ -920,9 +974,11 @@ off_t ftello(FILE *stream);
 
 ```c
 /*
- * 功能: 改变流的偏移量，类似lseek()
- * 返回: 成功返回0，失败返回-1
- * IN  : whence     参考位置，SEEK_SET 0 文件开头; SEEK_CUR 1 当前位置; SEEK_END 2 文件结尾。
+ * @brief   改变流的偏移量，类似lseek()
+ * @param   stream [IN] 文件流
+ * @param   offset [IN] 偏移量
+ * @param   whence [IN] 参考位置，SEEK_SET 0 文件开头; SEEK_CUR 1 当前位置; SEEK_END 2 文件结尾
+ * @return  成功返回0，失败返回-1
  */
 #include <stdio.h>
 int fseek(FILE *stream, long offset, int whence);
@@ -933,42 +989,54 @@ int fseeko(FILE *stream, off_t offset, int whence);
 
 ```c
 /*
- * 功能: 设置流的偏移量为文件开头
+ * @brief   设置流的偏移量为文件开头
+ * @param   stream [IN] 文件流
+ * @return  无
  */
 #include <stdio.h>
-void rewind(FILE *stream)
+void rewind(FILE *stream);
 ```
 
 ### fgetpos - 获取流 stream 的当前文件位置，并把它写入到 pos
 
 ```c
 /*
- * 功能: 获取流 stream 的当前文件位置，并把它写入到 pos
- * 返回: 成功返回0，失败返回非0
+ * @brief   获取流 stream 的当前文件位置，并把它写入到 pos
+ * @param   stream [IN] 文件流
+ * @param   pos    [OUT] 存储文件位置的fpos_t对象
+ * @return  成功返回0，失败返回非0
  */
 #include <stdio.h>
-int fgetpos(FILE *stream, fpos_t *pos)
+int fgetpos(FILE *stream, fpos_t *pos);
 ```
 
 ### fsetpos - 设置给定流 stream 的文件位置为给定的位置pos
 
 ```c
 /*
- * 功能: 设置给定流 stream 的文件位置为给定的位置pos
- * 返回: 成功返回0，失败返回非0
+ * @brief   设置给定流 stream 的文件位置为给定的位置pos
+ * @param   stream [IN] 文件流
+ * @param   pos    [IN] 由fgetpos获取的文件位置
+ * @return  成功返回0，失败返回非0
  */
 #include <stdio.h>
-int fsetpos(FILE *stream, fpos_t *pos)
+int fsetpos(FILE *stream, const fpos_t *pos);
 ```
 
 ### printf / scanf - stdio 格式化输出/输入
 
 ```c
 /*
- * 功能: stdio 格式化输出/输入
- * 返回: 格式化输出成功返回输出字符数(不含'\0')，失败返回负数
- * 返回: 格式化输入成功返回输入字符数，文件尾端或失败返回EOF
- * 说明: linux 内核打印使用 `printk` 函数，普通打印使用 `printf` 函数
+ * @brief   stdio 格式化输出/输入
+ * @param   format [IN] 格式化字符串
+ * @param   stream [IN] 文件流
+ * @param   fd     [IN] 文件描述符
+ * @param   str    [IN/OUT] 字符串缓冲区
+ * @param   size   [IN] snprintf/vsnprintf的最大写入长度
+ * @param   arg    [IN] va_list参数列表
+ * @return  格式化输出成功返回输出字符数(不含'\0')，失败返回负数
+ *          格式化输入成功返回输入字符数，文件尾端或失败返回EOF
+ * @note    linux 内核打印使用 `printk` 函数，普通打印使用 `printf` 函数
  */
 #include <stdio.h>
 int printf(const char *format, ...);                    // 格式化输出到stdout
@@ -1034,12 +1102,16 @@ void APP_ERR(const char *format, ...)
 
 ```c
 /*
- * 功能: stdio 字符(串)读取/写入
- * 返回: 字符读取成功返回读取字符，到达流尾端或出错返回EOF
- *       字符串读取成功返回buf，到达流尾端或出错返回NULL
- *       字符写入成功返回写入字符c，出错返回EOF
- *       字符写入成功返回>0，出错返回EOF
- * 说明: getc()可能是宏，fgetc()一定是函数。putc()可能是宏，fputc()一定是函数。
+ * @brief   stdio 字符(串)读取/写入
+ * @param   c      [IN] 要写入的字符
+ * @param   s      [IN/OUT] 字符串缓冲区
+ * @param   n      [IN] fgets最大读取字符数(含'\0')
+ * @param   stream [IN] 文件流
+ * @return  字符读取成功返回读取字符，到达流尾端或出错返回EOF
+ *          字符串读取成功返回buf，到达流尾端或出错返回NULL
+ *          字符写入成功返回写入字符c，出错返回EOF
+ *          字符串写入成功返回>0，出错返回EOF
+ * @note    getc()可能是宏，fgetc()一定是函数。putc()可能是宏，fputc()一定是函数。
  */
 #include <stdio.h>
 int getchar(void)               // 从stdin读取一个无符号字符c
@@ -1055,24 +1127,26 @@ int puts(const char *s)         // 把字符串s写入到stdout(直到空字符�
 int fputs(const char *s, FILE *stream) // 把字符串s写入到流stream(直到空字符，但不包括空字符，不会追加换行符到流stream)
 ```
 
-### ferrof - 判断流是否出错
+### ferror - 判断流是否出错
 
 ```c
 /*
- * 功能: 判断流是否出错
- * 返回: 真返回非0，假返回0
- * 说明: 流有两个标志: 出错标志和文件结束标志。stdio函数返回EOF时不能判断是哪种。
+ * @brief   判断流是否出错
+ * @param   stream [IN] 文件流
+ * @return  真返回非0，假返回0
+ * @note    流有两个标志: 出错标志和文件结束标志。stdio函数返回EOF时不能判断是哪种。
  */
 #include <stdio.h>
-int ferrof(FILE *stream);
+int ferror(FILE *stream);
 ```
 
 ### feof - 判断流是否结尾
 
 ```c
  /*
- * 功能: 判断流是否结尾
- * 返回: 真返回非0，假返回0
+ * @brief   判断流是否结尾
+ * @param   stream [IN] 文件流
+ * @return  真返回非0，假返回0
  */
 #include <stdio.h>
 int feof(FILE *stream);
@@ -1082,7 +1156,9 @@ int feof(FILE *stream);
 
 ```c
  /*
- * 功能: 清除出错标志和文件结束标志
+ * @brief   清除出错标志和文件结束标志
+ * @param   stream [IN] 文件流
+ * @return  无
  */
 #include <stdio.h>
 void clearerr(FILE *stream);
@@ -1092,9 +1168,9 @@ void clearerr(FILE *stream);
 
 ```c
 /*
- * 功能: 返回临时文件路径名
- * 返回: 成功返回唯一文件路径名，失败返回NULL
- * IN  : buf        存放文件路径名的buf，至少长L_tmpnam，NULL时文件路径名放在静态区，每次调用会重写
+ * @brief   返回临时文件路径名
+ * @param   buf [OUT] 存放文件路径名的buf，至少长L_tmpnam，NULL时文件路径名放在静态区，每次调用会重写
+ * @return  成功返回唯一文件路径名，失败返回NULL
  */
 #include <stdlib.h>
 char *tmpnam(char *buf);
@@ -1104,9 +1180,9 @@ char *tmpnam(char *buf);
 
 ```c
 /*
- * 功能: 新建临时文件"wb+"
- * 返回: 成功返回文件指针，失败返回NULL
- * 说明: 程序结束或文件关闭会自动删除文件
+ * @brief   新建临时文件"wb+"
+ * @return  成功返回文件指针，失败返回NULL
+ * @note    程序结束或文件关闭会自动删除文件
  */
 #include <stdio.h>
 FILE *tmpfile(void);
@@ -1116,9 +1192,9 @@ FILE *tmpfile(void);
 
 ```c
 /*
- * 功能: 新建临时文件(O_CREAT | O_EXCL)
- * 返回: 成功返回文件描述符，失败返回-1
- * INOUT:template   文件路径名，必须是字符数组(最后6个字符为XXXXXX)，mkstemp会修改template的最后6个字符。
+ * @brief   新建临时文件(O_CREAT | O_EXCL)
+ * @param   template [INOUT] 文件路径名，必须是字符数组(最后6个字符为XXXXXX)，mkstemp会修改template的最后6个字符
+ * @return  成功返回文件描述符，失败返回-1
  */
 #include <stdlib.h>
 int mkstemp(char *template);
@@ -1128,15 +1204,15 @@ int mkstemp(char *template);
 
 ```c
 /*
- * 功能: 设置流的stdio缓冲(用户区)模式
- * 返回: 成功返回0，失败返回非0值
- * IN  : stream     文件流
- * IN  : buf        缓冲区，必需是静态的或堆分配的，为NULL时stdio库会自动分配缓冲区并忽略size
- * IN  : mode       缓冲类型: _IONBF不缓冲; _IOLBF 行缓冲; _IOFBF buf缓冲。
- * IN  : size       缓冲区大小
- * 说明: stdio函数调用read()或write()系统调用时机:不缓冲每次调用(stderr)，行缓冲遇到换行符调用(终端)，buf缓冲buf满时调用。
- *      打开流后，必需在调用任何其它stdio函数前调用setvbuf()。
- *      BUFSIZ定义在<stdio.h>中，一般是8192.
+ * @brief   设置流的stdio缓冲(用户区)模式
+ * @param   stream [IN] 文件流
+ * @param   buf    [IN] 缓冲区，必需是静态的或堆分配的，为NULL时stdio库会自动分配缓冲区并忽略size
+ * @param   mode   [IN] 缓冲类型: _IONBF不缓冲; _IOLBF 行缓冲; _IOFBF buf缓冲
+ * @param   size   [IN] 缓冲区大小
+ * @return  成功返回0，失败返回非0值
+ * @note    stdio函数调用read()或write()系统调用时机:不缓冲每次调用(stderr)，行缓冲遇到换行符调用(终端)，buf缓冲buf满时调用。
+ *          打开流后，必需在调用任何其它stdio函数前调用setvbuf()。
+ *          BUFSIZ定义在<stdio.h>中，一般是8192.
  */
 #include <stdio.h>
 int setvbuf(FILE *stream, char *buf, int mode, size_t size);
@@ -1148,10 +1224,10 @@ void setbuffer(FILE *stream, char *buf, size_t size); <==> setvbuf(fp, buf, (buf
 
 ```c
 /*
- * 功能: 强制刷新stdio缓冲(用户区)
- * 返回: 成功返回0，失败返回EOF
- * IN  : stream     文件流。NULL时刷新所有缓冲区。用于输入流会丢弃已缓冲的数据。
- * 说明: 关闭流会自动刷新其缓冲区。从stdin读取输入会隐含调用fflush(stdout)。
+ * @brief   强制刷新stdio缓冲(用户区)
+ * @param   stream [IN] 文件流。NULL时刷新所有缓冲区。用于输入流会丢弃已缓冲的数据
+ * @return  成功返回0，失败返回EOF
+ * @note    关闭流会自动刷新其缓冲区。从stdin读取输入会隐含调用fflush(stdout)。
  */
 #include <stdio.h>
 int fflush(FILE *stream);
@@ -1202,7 +1278,7 @@ struct stat {
 * 一旦将某一目录的set-group-id置位后，该目录下的所有子目录也将置位。
 * 文件的属主或属组发生变化，会清除set-user-id和set-group-id。改变文件的属主或属组时，如果屏蔽了属组的可执行权限位或改变的是目录，那么将不会屏蔽set-group-id。
 * 文件创建时，st_uid取自进程有效用户ID; st_gid取自进程有效组ID(SYSV默认)或父目录的组ID(BSD默认)。
-* ext2文件系统，mount文件系统未指定 “-ogrpid” (即默认-onogrpid选项)，且父目录置位 set-group-id，st_gid取自父目录的组ID，否则set-group-id取自进程有效组ID。
+* ext2文件系统，mount文件系统未指定 `-ogrpid` (即默认-onogrpid选项)，且父目录置位 set-group-id，st_gid取自父目录的组ID，否则set-group-id取自进程有效组ID。
 * chmod u+s prog ; chmod g+s prog，程序prog置位了set-user-id和set-group-id，exec(prog)会将进程的有效用户ID/有效组ID设置为可执行文件的UID/GID，而不是父进程的有效用户ID/有效组ID。
 * chmod g+s,g-x file 启用文件记录加锁为强制加锁。
 * 为目录设置S_ISVTX位，仅当非特权进程对该目录有可写权限，该进程只能对该目录下的同所有者的文件或目录进行删除或重命名。即各个用户可以在设置S_ISVTX位的目录(对该目录有可写权限)创建、删除、重命名文件，但不能删除或重命名其它用户创建的文件。
@@ -1231,9 +1307,12 @@ struct stat {
 
 ```c
 /*
- * 功能: 读取文件属性到statbuf
- * 返回: 成功返回0，失败返回-1
- * 说明: lstat不会对符号链接解引用，符号链接仅st_size和st_mode成员有效
+ * @brief   读取文件属性到statbuf
+ * @param   pathname [IN] 文件路径名
+ * @param   fd       [IN] 文件描述符
+ * @param   statbuf  [OUT] 存储文件属性的stat结构体
+ * @return  成功返回0，失败返回-1
+ * @note    lstat不会对符号链接解引用，符号链接仅st_size和st_mode成员有效
  */
 #include <sys/stat.h>
 int stat(const char *pathname, struct stat *statbuf);
@@ -1245,12 +1324,16 @@ int fstat(int fd, struct stat *statbuf);
 
 ```c
 /*
- * 功能: 修改文件的uid/gid
- * 返回: 成功返回0，失败返回-1
- * 说明:lchown不会对符号链接解引用
- * 不修改的项可以置为-1
- * uid 只有特权进程可以修改
- * gid 特权进程可以修改为任意值，普通进程(需要有效用户ID等于文件uid)可以修改为附属IDs中的一个。
+ * @brief   修改文件的uid/gid
+ * @param   pathname [IN] 文件路径名
+ * @param   fd       [IN] 文件描述符
+ * @param   owner    [IN] 新的用户ID，-1表示不修改
+ * @param   group    [IN] 新的组ID，-1表示不修改
+ * @return  成功返回0，失败返回-1
+ * @note    lchown不会对符号链接解引用
+ *          不修改的项可以置为-1
+ *          uid 只有特权进程可以修改
+ *          gid 特权进程可以修改为任意值，普通进程(需要有效用户ID等于文件uid)可以修改为附属IDs中的一个。
  */
 #include <unistd.h>
 int chown(const char *pathname, uid_t owner, gid_t group);
@@ -1262,9 +1345,10 @@ int fchown(int fd, uid_t owner, gid_t group);
 
 ```c
 /*
- * 功能: 进程对文件的权限测试
- * 返回: 权限允许返回0，否则返回-1
- * IN  : mode       测试模式: F_OK 存在， R_OK读权限， W_OK 写权限， X_OK 执行权限
+ * @brief   进程对文件的权限测试
+ * @param   pathname [IN] 文件路径名
+ * @param   mode     [IN] 测试模式: F_OK 存在， R_OK读权限， W_OK 写权限， X_OK 执行权限
+ * @return  权限允许返回0，否则返回-1
  */
 #include <unistd.h>
 int access(const char *pathname, int mode);
@@ -1274,8 +1358,9 @@ int access(const char *pathname, int mode);
 
 ```c
 /*
- * 功能: 修改进程的权限掩码
- * 返回: 总是成功返回原来的mask
+ * @brief   修改进程的权限掩码
+ * @param   mask [IN] 新的权限掩码
+ * @return  总是成功返回原来的mask
  */
 #include <sys/stat.h>
 mode_t umask(mode_t mask);
@@ -1285,9 +1370,12 @@ mode_t umask(mode_t mask);
 
 ```c
 /*
- * 功能: 修改文件的权限
- * 返回: 成功返回0，失败返回-1
- * 说明:特权进程可以修改，普通进程需要有效用户ID等于文件uid才能修改。
+ * @brief   修改文件的权限
+ * @param   pathname [IN] 文件路径名
+ * @param   fd       [IN] 文件描述符
+ * @param   mode     [IN] 新的权限模式
+ * @return  成功返回0，失败返回-1
+ * @note    特权进程可以修改，普通进程需要有效用户ID等于文件uid才能修改。
  */
 #include <sys/stat.h>
 int chmod(const char *pathname, mode_t mode);
@@ -1298,16 +1386,18 @@ int fchmod(int fd, mode_t mode);
 
 ```c
 /*
- * 功能: 修改文件的时间戳(UTC)
- * 返回: 成功返回0，失败返回-1
- * IN  : buf        要更新的时间，NULL表示更新为当前时间
- * IN  : tv         要更新的精确时间，tv[0]文件数据最近访问时间，tv[1]文件数据最近修改时间，NULL表示更新为当前时间
- * IN  : dirfd      相对的路径，见openat()
- *       times      要更新的精确时间，times[0]文件数据最近访问时间，times[1]文件数据最近修改时间，NULL表示更新为当前时间
- *                  将成员tv_nsec设置为: UTIME_NOW 表示更新为当前时间，UTIME_OMIT 表示更新为不修改此项
- *       flags      设置为 AT_SYMLINK_NOFOLLOW 表示不会对符号链接解引用。
- * 说明:lutimes不会对符号链接解引用
- * 特权进程可以修改，普通进程需要有效用户ID等于文件uid并且局域写权限才能修改。
+ * @brief   修改文件的时间戳(UTC)
+ * @param   pathname [IN] 文件路径名
+ * @param   fd       [IN] 文件描述符
+ * @param   dirfd    [IN] 相对的路径，见openat()
+ * @param   buf      [IN] 要更新的utimbuf时间，NULL表示更新为当前时间
+ * @param   tv       [IN] 要更新的精确timeval时间，tv[0]文件数据最近访问时间，tv[1]文件数据最近修改时间，NULL表示更新为当前时间
+ * @param   times    [IN] 要更新的精确timespec时间，times[0]文件数据最近访问时间，times[1]文件数据最近修改时间，NULL表示更新为当前时间
+ *                       将成员tv_nsec设置为: UTIME_NOW 表示更新为当前时间，UTIME_OMIT 表示更新为不修改此项
+ * @param   flags    [IN] 设置为 AT_SYMLINK_NOFOLLOW 表示不会对符号链接解引用
+ * @return  成功返回0，失败返回-1
+ * @note    lutimes不会对符号链接解引用
+ *          特权进程可以修改，普通进程需要有效用户ID等于文件uid并且具有写权限才能修改。
  */
 #include <utime.h>
 #include <sys/time.h>
@@ -1335,7 +1425,7 @@ int futimens(int fd, const struct timespec times[2]);
 
 ### 程序、进程、线程
 
-* 程序program是包含了一系列信息的文件，这些信息描述了如何在运行时穿件一个进程。
+* 程序program是包含了一系列信息的文件，这些信息描述了如何在运行时创建一个进程。
     * 信息包括: 二进制格式标识(elf)、机器语言指令、程序入口地址、数据、符号表和重定位表、共享库和动态链接信息、其它信息。
 * 进程process是一个可执行程序program的实例。进程是由内核定义抽象的实体，并为该实体分配用以执行程序的各项系统资源。从内核角度看，进程由用户内存空间(代码和变量)和一系列的内核数据结构(维护进程状态信息)组成。进程是资源分配的基本单位。
     * 所有与该进程有关的资源，都被记录在进程控制块PCB中。
@@ -1392,18 +1482,18 @@ int main(void)
 
 ### 进程基础
 
-* fork可以创建当前进程的一个副本，父进程和子进程只有PID(进程ID)不同。fork()对父进程返回子进程的pid，对子进程返回0。
+* fork可以创建当前进程的一个副本，父进程和子进程只有PID(进程ID)不同。`fork()` 对父进程返回子进程的pid，对子进程返回0。
 * exec将一个新程序加载到当前进程的内存中并执行。
 * Linux用clone方法创建线程。其工作方式类似于fork，但启用了精确的检查，以确认哪些资源与父进程共享、哪些资源为线程独立创建。
 * wait 的作用有两个:子进程未终止时挂起父进程，子进程的终止状态通过wait的status参数返回。
-* 进程通过 fork() 系统调用复制当前进程创建一个子进程，函数返回时父进程恢复执行，产生新的子进程开始执行。子进程接着通过 exec() 系统调用创建的新的地址空间，装入新的程序。子进程通过 exit() 系统调用退出执行，此时子进程设置为僵死状态直到父进程调用 wait() 或 waitpid() 为止(进程终结时所需的清理工作和进程描述符的删除被分开执行)。
-* fork() 系统调用的开销就是复制父进程的页表以及给子进程创建唯一的进程描述符。fork(), vfork(), __clone() 根据各自需要的参数标识去调用 clone(), 然后由 clone() 调用 do_fork() <kernel/fork.c> , do_fork() 调用 copy_process() 函数。现在调用 fork() 创建进程的方法引入了写时复制(Copy-On-Write， COW)。
+* 进程通过 `fork()` 系统调用复制当前进程创建一个子进程，函数返回时父进程恢复执行，产生新的子进程开始执行。子进程接着通过 `exec()` 系统调用创建的新的地址空间，装入新的程序。子进程通过 `exit()` 系统调用退出执行，此时子进程设置为僵死状态直到父进程调用 `wait()` 或 `waitpid()` 为止(进程终结时所需的清理工作和进程描述符的删除被分开执行)。
+* `fork()` 系统调用的开销就是复制父进程的页表以及给子进程创建唯一的进程描述符。`fork()`, `vfork()`, `__clone()` 根据各自需要的参数标识去调用 `clone()`, 然后由 `clone()` 调用 `do_fork()` `<kernel/fork.c>` , `do_fork()` 调用 `copy_process()` 函数。现在调用 `fork()` 创建进程的方法引入了写时复制(Copy-On-Write， COW)。
 * vfork() 除了不复制父进程的页表项之外，与 fork() 的功能完全相同。子进程作为父进程的一个单独的线程在他的地址空间运行，父进程被阻塞，直到子进程退出或调用 exec()。不建议使用。
-* Linux 通过slab分配器分配 struct task_struct 结构(动态分配) <linux/sched.h>，任务队列是一个双向循环链表。为了只要通过栈指针就能计算出结构的位置，只需要在栈的尾端{栈底(向下生长的栈)或栈顶(向上生长的栈)}创建一个新的结构 struct thread_info 结构 <asm/thread_info.h> 。注:task_struct指针是thread_info的第1个成员。
-* 线程仅仅被视为一个与其他进程共享某些资源(如地址空间、文件系统信息、文件描述符和信号处理程序等)的进程。每个线程都有一个唯一隶属于自己的 task_struct 。
+* Linux 通过slab分配器分配 struct task_struct 结构(动态分配) ，任务队列是一个双向循环链表。为了只要通过栈指针就能计算出结构的位置，只需要在栈的尾端{栈底(向下生长的栈)或栈顶(向上生长的栈)}创建一个新的结构 `struct thread_info` 结构 `<asm/thread_info.h>` 。注: `task_struct` 指针是 `thread_info` 的第1个成员。
+* 线程仅仅被视为一个与其他进程共享某些资源(如地址空间、文件系统信息、文件描述符和信号处理程序等)的进程。每个线程都有一个唯一隶属于自己的 `task_struct` 。
 * 僵尸状态: 进程的资源(内存、与外设的连接，等等)已经释放(因此它们无法也决不会再次运行), 但进程表中仍然有对应的表项。
     * 僵尸是如何产生的？其原因在于 UNIX 操作系统下进程创建和销毁的方式。在两种事件发生时，程序将终止运行。第一，程序必须由另一个进程或一个用户杀死(通常是通过发送 SIGTERM 或 SIGKILL 信号来完成，这等价于正常地终止进程); 进程的父进程在子进程终止时必须调用或已经调用 wait4(读做 wait for)系统调用。 这相当于向内核证实父进程已经确认子进程的终结。该系统调用使得内核可以释放为子进程保留的资源。只有在第一个条件发生(程序终止)而第二个条件不成立的情况下(wait4)，才会出现“僵尸”状态。
-* /proc/PIDn/xxx 进程内核信息的虚拟文件。
+* `/proc/PIDn/xxx` 进程内核信息的虚拟文件。
 
 ### 进程ID凭证
 
@@ -1450,18 +1540,26 @@ int main(void)
 
 ```c
 /*
- * 功能: 获取进程的ID号
- * 返回: getuid / getgid / geteuid /getegid 总是成功返回
- *       getresuid / getresgid，成功返回0，失败返回-1
-         getgroups，成功返回辅助组ID个数，失败返回-1
- * 说明: gidsetsize 是数组大小，一般设为NGROUPS_MAX+1，如果实际辅助组ID个数大于gidsetsize，getgroups调用失败，错误号 EINVAL
- * NGROUPS_MAX值可能很大，所以需要动态分配grouplist。
+ * @brief   获取进程的ID号
+ * @param   ruid        [OUT] 实际用户ID
+ * @param   euid        [OUT] 有效用户ID
+ * @param   suid        [OUT] 保存用户ID
+ * @param   rgid        [OUT] 实际组ID
+ * @param   egid        [OUT] 有效组ID
+ * @param   sgid        [OUT] 保存组ID
+ * @param   gidsetsize  [IN] grouplist数组大小，一般设为NGROUPS_MAX+1
+ * @param   grouplist   [OUT] 辅助组ID集数组
+ * @return  getuid / getgid / geteuid /getegid 总是成功返回
+ *          getresuid / getresgid，成功返回0，失败返回-1
+ *          getgroups，成功返回辅助组ID个数，失败返回-1
+ * @note    如果实际辅助组ID个数大于gidsetsize，getgroups调用失败，错误号 EINVAL
+ *          NGROUPS_MAX值可能很大，所以需要动态分配grouplist。
  */
 #include <unistd.h>
 uid_t getuid(void);     // 返回实际用户ID
 gid_t getgid(void);     // 返回实际组ID
 uid_t geteuid(void);    // 返回有效用户ID
-gid_t getegid(void);    // 返回有效用户ID
+gid_t getegid(void);    // 返回有效组ID
 int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid); // 将获取的实际用户ID、有效用户ID、保存用户ID分别写入 ruid、euid、suid
 int getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid); // 将实际组ID、有效组ID、保存组ID分别写入 rgid、egid、sgid
 int getgroups(int gidsetsize, gid_t grouplist[]); // 将获取的辅助组ID集(有的实现可能包含有效组ID)写入grouplist
@@ -1471,32 +1569,38 @@ int getgroups(int gidsetsize, gid_t grouplist[]); // 将获取的辅助组ID集(
 
 ```c
 /*
- * 功能: 修改进程的ID号
- * 返回: 成功返回0，错误返回-1，错误号EPERM
- * 说明: 修改多个ID的函数，若某个参数不修改，设置ID为-1。修改要么都成功，要么都失败。
- * setuid(e) / setgid(e)
- * 非特权进程: 将有效ID改为值e(实际ID、保存ID)
- * 特权进程:   将实际ID、有效ID、保存ID改为任意ID值e，特权进程取消特权: setuid(getuid())
- * seteuid(e) / setegid(e)
- * 非特权进程: 将有效ID改为值e(实际ID、保存ID)
- * 特权进程:   将有效ID改为任意ID值e
- * setreuid(r, e); / setregid(r, e);
- * 非特权进程: 将实际ID改为值r(实际ID、有效ID)，将有效ID改为值e(实际ID、有效ID、保存ID)
- * 特权进程:   将实际ID改为任意ID值r，将有效ID改为任意ID值e
- * 说明:       r不为-1或e不等于调用之前的实际ID时，会将有效ID改为新的有效ID。
- * setresuid(r, e, s) / setresgid(r, e, s)
- * 非特权进程: 将实际ID改为值r(实际ID、有效ID、保存ID)，将有效ID改为值e(实际ID、有效ID、保存ID)，将保存ID改为值s(实际ID、有效ID、保存ID)
- * 特权进程:   将实际ID改为任意ID值r，将有效ID改为任意ID值e，将保存ID改为任意ID值s
- * 说明:       总是会将文件ID改为新的有效ID。
- * setfsuid(f) / setfsgid(f);
- * 非特权进程: 将文件ID改为值f(实际ID、有效ID、保存ID、文件ID)
- * 特权进程:   将文件ID改为任意ID值f
- * 说明:       返回值与其它不同，总是返回原先的文件ID.
- * setgroups(num, array);
- * 非特权进程: 无法调用
- * 特权进程:   将辅助组IDs改为任意array集
- * initgroups(user, gid);
- * 扫描/etc/groups文件，为user创建辅助组IDs，并将gid追加到辅助组IDs。
+ * @brief   修改进程的ID号
+ * @param   uid/euid/ruid/suid/fsuid [IN] 用户ID
+ * @param   gid/egid/rgid/sgid/fsgid [IN] 组ID
+ * @param   gidsetsize               [IN] grouplist数组大小
+ * @param   grouplist                [IN] 辅助组ID集数组
+ * @param   user                     [IN] 用户名
+ * @param   group                    [IN] 组ID
+ * @return  成功返回0，错误返回-1，错误号EPERM
+ * @note    修改多个ID的函数，若某个参数不修改，设置ID为-1。修改要么都成功，要么都失败。
+ *          setuid(e) / setgid(e)
+ *          非特权进程: 将有效ID改为值e(实际ID、保存ID)
+ *          特权进程:   将实际ID、有效ID、保存ID改为任意ID值e，特权进程取消特权: setuid(getuid())
+ *          seteuid(e) / setegid(e)
+ *          非特权进程: 将有效ID改为值e(实际ID、保存ID)
+ *          特权进程:   将有效ID改为任意ID值e
+ *          setreuid(r, e); / setregid(r, e);
+ *          非特权进程: 将实际ID改为值r(实际ID、有效ID)，将有效ID改为值e(实际ID、有效ID、保存ID)
+ *          特权进程:   将实际ID改为任意ID值r，将有效ID改为任意ID值e
+ *          说明:       r不为-1或e不等于调用之前的实际ID时，会将有效ID改为新的有效ID。
+ *          setresuid(r, e, s) / setresgid(r, e, s)
+ *          非特权进程: 将实际ID改为值r(实际ID、有效ID、保存ID)，将有效ID改为值e(实际ID、有效ID、保存ID)，将保存ID改为值s(实际ID、有效ID、保存ID)
+ *          特权进程:   将实际ID改为任意ID值r，将有效ID改为任意ID值e，将保存ID改为任意ID值s
+ *          说明:       总是会将文件ID改为新的有效ID。
+ *          setfsuid(f) / setfsgid(f);
+ *          非特权进程: 将文件ID改为值f(实际ID、有效ID、保存ID、文件ID)
+ *          特权进程:   将文件ID改为任意ID值f
+ *          说明:       返回值与其它不同，总是返回原先的文件ID.
+ *          setgroups(num, array);
+ *          非特权进程: 无法调用
+ *          特权进程:   将辅助组IDs改为任意array集
+ *          initgroups(user, gid);
+ *          扫描/etc/groups文件，为user创建辅助组IDs，并将gid追加到辅助组IDs。
  */
 int setuid(uid_t uid);
 int setgid(gid_t gid);
@@ -1516,8 +1620,9 @@ int initgroups(const char *user, gid_t group);
 
 ```c
 /*
- * 功能: 获取进程的进程号
- * 说明: 总是执行成功，进程号总是大于0，init 的进程号为1。内核顺序递增分配下一个可用的进程号，到最大值后重置计数为300
+ * @brief   获取进程的进程号
+ * @return  进程ID
+ * @note    总是执行成功，进程号总是大于0，init 的进程号为1。内核顺序递增分配下一个可用的进程号，到最大值后重置计数为300
  */
 pid_t getpid(void);
 ```
@@ -1526,8 +1631,9 @@ pid_t getpid(void);
 
 ```c
 /*
- * 功能: 获取进程的父进程号
- * 说明: 进程的父进程终止会由init进程收养该进程
+ * @brief   获取进程的父进程号
+ * @return  父进程ID
+ * @note    进程的父进程终止会由init进程收养该进程
  */
 pid_t getppid(void);
 ```
@@ -1536,14 +1642,14 @@ pid_t getppid(void);
 
 ```c
 /*
- * 功能: 创建进程
- * 返回: 错误返回 -1，成功两次返回，在父进程处返回子进程PID，在父进程处返回0。
- * 说明: fork()/vfork()子进程复制了父进程的文件描述符表，而不是共享。
- * fork()子进程和父进程共享代码段，子进程复制了父进程数据段、堆、栈(写时复制)。
- * fork()后进程修改数据段、堆、栈的数据不会互相影响，fork()后无法确定父进程和子进程谁先运行。
- * vfork()无需复制虚拟内存页和页表，子进程和父进程共享内存空间。
- * vfork()后子进程先运行，父进程将挂起，直到子进程执行了exec()或exit()退出。
- * vfork()后，子进程执行了exec()或exit()退出前，在此期间子进程修改数据段、堆、栈的数据会影响父进程。子进程在最外层调用return会使父进程由于段错误终止。
+ * @brief   创建进程
+ * @return  错误返回 -1，成功两次返回，在父进程处返回子进程PID，在子进程处返回0
+ * @note    fork()/vfork()子进程复制了父进程的文件描述符表，而不是共享。
+ *          fork()子进程和父进程共享代码段，子进程复制了父进程数据段、堆、栈(写时复制)。
+ *          fork()后进程修改数据段、堆、栈的数据不会互相影响，fork()后无法确定父进程和子进程谁先运行。
+ *          vfork()无需复制虚拟内存页和页表，子进程和父进程共享内存空间。
+ *          vfork()后子进程先运行，父进程将挂起，直到子进程执行了exec()或exit()退出。
+ *          vfork()后，子进程执行了exec()或exit()退出前，在此期间子进程修改数据段、堆、栈的数据会影响父进程。子进程在最外层调用return会使父进程由于段错误终止。
  */
 pid_t fork(void);
 pid_t vfork(void);
@@ -1553,10 +1659,11 @@ pid_t vfork(void);
 
 ```c
 /*
- * 功能: 主动终止进程
- * IN  : status     终止状态，仅低8位有效，惯例0表示正常退出，非零表示异常退出
- * 说明: exit()是封装_exit()的glibc库函数，exit()会先调用退出处理程序和刷新stdio流缓冲区，然后执行_exit()。标准C里有EXIT_SUCCESS和EXIT_FAILURE两个宏。
- * 程序因为信号而异常终止或直接调用_exit()不会调用退出处理程序和刷新stdio流缓冲区。
+ * @brief   主动终止进程
+ * @param   status [IN] 终止状态，仅低8位有效，惯例0表示正常退出，非零表示异常退出
+ * @return  无
+ * @note    exit()是封装_exit()的glibc库函数，exit()会先调用退出处理程序和刷新stdio流缓冲区，然后执行_exit()。标准C里有EXIT_SUCCESS和EXIT_FAILURE两个宏。
+ *          程序因为信号而异常终止或直接调用_exit()不会调用退出处理程序和刷新stdio流缓冲区。
  */
 void _exit(int status);
 void exit(int status);
@@ -1565,10 +1672,12 @@ void exit(int status);
 ### atexit / on_exit - 注册退出处理程序
 ```c
 /*
- * 功能: 注册退出处理程序
- * 返回: 成功返回0，错误返回非0。
- * 说明: on_exit 是对atexit扩展的glibc库函数，退出处理程序第一个参数是退出状态。
- * 进程退出时以相反顺序运行注册的退出处理程序。
+ * @brief   注册退出处理程序
+ * @param   func [IN] 退出处理函数指针
+ * @param   arg  [IN] on_exit传递给func的参数
+ * @return  成功返回0，错误返回非0
+ * @note    on_exit 是对atexit扩展的glibc库函数，退出处理程序第一个参数是退出状态。
+ *          进程退出时以相反顺序运行注册的退出处理程序。
  */
 int atexit(void (*func)(void));
 int on_exit(void (*func)(int, void *), void *arg);
@@ -1578,10 +1687,10 @@ int on_exit(void (*func)(int, void *), void *arg);
 
 ```c
 /*
- * 功能: 等待子进程终止
- * 返回: 成功返回子进程PID，错误返回-1。
- * OUT : status     子进程退出状态，NULL表示不关心子进程退出状态
- * 说明: 子进程未终止时父进程将挂起，不存在没有未被wait的子进程时调用wait()返回-1，errno 置为 ECHILD
+ * @brief   等待子进程终止
+ * @param   status [OUT] 子进程退出状态，NULL表示不关心子进程退出状态
+ * @return  成功返回子进程PID，错误返回-1
+ * @note    子进程未终止时父进程将挂起，不存在没有未被wait的子进程时调用wait()返回-1，errno 置为 ECHILD
  */
 pid_t wait(int *status);
 ```
@@ -1590,23 +1699,23 @@ pid_t wait(int *status);
 
 ```c
 /*
- * 功能: 等待子进程终止(或因信号停止或恢复执行)
- * 返回: 成功返回子进程PID或0，错误返回-1。
- * IN  : pid        根据值类型等待不同子进程
- *       > 0        等待ID为pid的子进程;
- *       == 0       等待同一进程组的子进程;
- *       == -1      等待任意子进程;
- *       < -1       等待进程组ID等于pid绝对值的所有子进程。
- * OUT : status     子进程退出状态，NULL表示不关心子进程退出状态
- *       测试宏                 获取退出状态或信号编号(int)     子进程状态
- *       WIFEXITED(status)      WEXITSTATUS(status)             正常结束子进程
- *       WIFSIGNALED(status)    WTERMSIG(status)                信号杀死子进程(WCOREDUMP(status)测试是否产生内核转储文件)
- *       WIFSTOPPED(status)     WSTOPSIG(status)                子进程因信号停止
- *       WIFCONTINUED(status)   SIGCONT                         子进程因信号恢复执行
- * IN  : options    位掩码标识符
- *       WUNTRACED  等待子进程终止或等待子进程因信号(SIGSTOP/SIGTTIN)停止
- *       WCONTINUED 等待子进程因信号(SIGCONT)由停止状态恢复执行
- *       WNOHANG    子进程状态未发生改变则立即返回0，如果找不到与pid匹配的子进程，返回-1，错误号 ECHILD
+ * @brief   等待子进程终止(或因信号停止或恢复执行)
+ * @param   pid     [IN] 根据值类型等待不同子进程
+ *                      > 0        等待ID为pid的子进程;
+ *                      == 0       等待同一进程组的子进程;
+ *                      == -1      等待任意子进程;
+ *                      < -1       等待进程组ID等于pid绝对值的所有子进程
+ * @param   status  [OUT] 子进程退出状态，NULL表示不关心子进程退出状态
+ * @param   options [IN] 位掩码标识符
+ *                      WUNTRACED  等待子进程终止或等待子进程因信号(SIGSTOP/SIGTTIN)停止
+ *                      WCONTINUED 等待子进程因信号(SIGCONT)由停止状态恢复执行
+ *                      WNOHANG    子进程状态未发生改变则立即返回0，如果找不到与pid匹配的子进程，返回-1，错误号 ECHILD
+ * @return  成功返回子进程PID或0，错误返回-1
+ * @note    测试宏                 获取退出状态或信号编号(int)     子进程状态
+ *          WIFEXITED(status)      WEXITSTATUS(status)             正常结束子进程
+ *          WIFSIGNALED(status)    WTERMSIG(status)                信号杀死子进程(WCOREDUMP(status)测试是否产生内核转储文件)
+ *          WIFSTOPPED(status)     WSTOPSIG(status)                子进程因信号停止
+ *          WIFCONTINUED(status)   SIGCONT                         子进程因信号恢复执行
  */
 pid_t waitpid(pid_t pid, int *status, int options);
 ```
@@ -1615,17 +1724,17 @@ pid_t waitpid(pid_t pid, int *status, int options);
 
 ```c
 /*
- * 功能: 等待子进程
- * 返回: 成功返回0并更新infop，错误返回-1。
- * IN  : idtype      P_ALL，等待任意子进程; P_PID, 等待ID为id的子进程; P_GID，等待进程组ID为id的所有子进程。
- * IN  : id         进程ID或进程组ID
- * OUT : infop      返回的子进程状态相关信息
- * IN  : options    执行方式
- * WEXITED          等待子进程终止或等待子进程因信号(SIGSTOP/SIGTTIN)停止
- * WSTOPPED         等待子进程因信号(SIGSTOP/SIGTTIN)停止
- * WCONTINUED       等待子进程因信号(SIGCONT)由停止状态恢复执行
- * WNOHANG          子进程状态未发生改变则立即返回0，改变将子进程状态写入到infop，如果找不到与pid匹配的子进程，返回-1，错误号 ECHILD
- * WNOWAIT          获取子进程状态，成功立即返回0，将子进程状态写入到infop，子进程还是可等待的。
+ * @brief   等待子进程
+ * @param   idtype  [IN] P_ALL，等待任意子进程; P_PID, 等待ID为id的子进程; P_GID，等待进程组ID为id的所有子进程
+ * @param   id      [IN] 进程ID或进程组ID
+ * @param   infop   [OUT] 返回的子进程状态相关信息
+ * @param   options [IN] 执行方式
+ *                      WEXITED          等待子进程终止或等待子进程因信号(SIGSTOP/SIGTTIN)停止
+ *                      WSTOPPED         等待子进程因信号(SIGSTOP/SIGTTIN)停止
+ *                      WCONTINUED       等待子进程因信号(SIGCONT)由停止状态恢复执行
+ *                      WNOHANG          子进程状态未发生改变则立即返回0，改变将子进程状态写入到infop，如果找不到与pid匹配的子进程，返回-1，错误号 ECHILD
+ *                      WNOWAIT          获取子进程状态，成功立即返回0，将子进程状态写入到infop，子进程还是可等待的
+ * @return  成功返回0并更新infop，错误返回-1
  */
 int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options);
 ```
@@ -1634,9 +1743,12 @@ int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options);
 
 ```c
 /*
- * 功能: 等待子进程(不建议)
- * 返回: 成功返回子进程PID并更新rusage，错误返回-1。
- * OUT : rusage     子进程资源相关信息
+ * @brief   等待子进程(不建议)
+ * @param   pid     [IN] wait4等待指定子进程PID
+ * @param   status  [OUT] 子进程退出状态
+ * @param   options [IN] 选项标志
+ * @param   rusage  [OUT] 子进程资源相关信息
+ * @return  成功返回子进程PID并更新rusage，错误返回-1
  */
 pid_t wait3(int *status, int options, struct rusage *rusage);  // ==> waitpid(-1, &status, options);
 pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage); // ==> waitpid(pid, &status, options);
@@ -1646,12 +1758,14 @@ pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage); // ==> 
 
 ```c
 /*
- * 功能: SIGCHLD 信号处理函数
- * 作用: 防止僵尸线程
- * 无论子进程如何终止，都会向它的父进程发送 SIGCHLD 信号，父进程对该信号的默认处理是忽略。
- * 当信号处理程序时，会暂时阻塞引发调用的信号，在此期间产生同样的信号不会被捕获。
- * 应用应该在创建任何子进程之前创建SIGCHLD 信号处理函数。
- * 如果 sigaction()设置SIGCHLD处理程序时传入了 SA_NOCLDSTOP 标志，子进程停止和恢复执行时会向它的父进程发送 SIGCHLD 信号。
+ * @brief   SIGCHLD 信号处理函数
+ * @param   sig [IN] 信号编号
+ * @return  无
+ * @note    防止僵尸线程
+ *          无论子进程如何终止，都会向它的父进程发送 SIGCHLD 信号，父进程对该信号的默认处理是忽略。
+ *          当信号处理程序时，会暂时阻塞引发调用的信号，在此期间产生同样的信号不会被捕获。
+ *          应用应该在创建任何子进程之前创建SIGCHLD 信号处理函数。
+ *          如果 sigaction()设置SIGCHLD处理程序时传入了 SA_NOCLDSTOP 标志，子进程停止和恢复执行时会向它的父进程发送 SIGCHLD 信号。
  */
 static void sigchldHandler(int sig)
 {
@@ -1664,19 +1778,19 @@ static void sigchldHandler(int sig)
 
 ```c
 /*
- * 功能: 执行新程序(bin文件或脚本文件)
- * 返回: 成功永不返回，错误返回-1。
- * IN  : pathname   可执行(包含路径)文件名
- * IN  : filename   可执行文件名，包含'/'则是可执行(包含路径)文件名，否则在PATH环境变量指定的目录中搜索。
- * IN  : fd         文件描述符指定可执行(包含路径)文件
- * IN  : argv       命令行参数数组
- * IN  : arg        命令行参数列表，以NULL结尾。
- * IN  : envp       环境列表，echo $PATH
- * 说明: execve()是系统调用，其它是封装的库函数。
- * 执行新程序会重建进程的虚拟内存空间，原有内存空间的数据全部丢弃，但进程ID不变。
- * 对命令行参数的描述: v表示使用命令行参数数组，l表示命令行参数字列表。命令行字符串格式为"name=value"
- * 对程序文件的描述  : 有p表示在PATH环境变量指定的目录中搜索可执行文件名，否则表示(包含路径的)文件名。
- * 对环境列表的描述  : 有e表示使用指定的envp环境列表，否则表示使用进程原来的环境列表。
+ * @brief   执行新程序(bin文件或脚本文件)
+ * @param   pathname [IN] 可执行(包含路径)文件名
+ * @param   filename [IN] 可执行文件名，包含'/'则是可执行(包含路径)文件名，否则在PATH环境变量指定的目录中搜索
+ * @param   fd       [IN] 文件描述符指定可执行(包含路径)文件
+ * @param   argv     [IN] 命令行参数数组
+ * @param   arg      [IN] 命令行参数列表，以NULL结尾
+ * @param   envp     [IN] 环境列表，echo $PATH
+ * @return  成功永不返回，错误返回-1
+ * @note    execve()是系统调用，其它是封装的库函数。
+ *          执行新程序会重建进程的虚拟内存空间，原有内存空间的数据全部丢弃，但进程ID不变。
+ *          对命令行参数的描述: v表示使用命令行参数数组，l表示命令行参数字列表。命令行字符串格式为"name=value"
+ *          对程序文件的描述  : 有p表示在PATH环境变量指定的目录中搜索可执行文件名，否则表示(包含路径的)文件名。
+ *          对环境列表的描述  : 有e表示使用指定的envp环境列表，否则表示使用进程原来的环境列表。
  */
 
 int execv(const char *pathname,  char *const argv[]);
@@ -1693,14 +1807,15 @@ int fexecve(int fd, char *const argv[], char *const envp[]);
 ### system - 执行shell命令
 ```c
 /*
- * 功能: 执行shell命令
- * 返回: 返回值根据不同情况返回不通知。
- * 说明: system()会创建一个子进程执行shell，shell进程创建子进程执行shell命令。
- * command为NULL时，shell可用返回非0，不可用返回0。
- * 无法创建子进程或无法获取其终止状态，返回-1。
- * 子进程不能执行shell，返回状态和子shell调用_exit(127)一样。
- * 调用成功返回command的子shell终止状态。
- * command()运行期间必须阻塞SIGCHLD信号。
+ * @brief   执行shell命令
+ * @param   command [IN] shell命令字符串，NULL时检查shell可用性
+ * @return  返回值根据不同情况返回不同值
+ * @note    system()会创建一个子进程执行shell，shell进程创建子进程执行shell命令。
+ *          command为NULL时，shell可用返回非0，不可用返回0。
+ *          无法创建子进程或无法获取其终止状态，返回-1。
+ *          子进程不能执行shell，返回状态和子shell调用_exit(127)一样。
+ *          调用成功返回command的子shell终止状态。
+ *          command()运行期间必须阻塞SIGCHLD信号。
  */
 int system(const char *command);
 ```
@@ -1732,7 +1847,7 @@ int main(int argc, char *argv[])
 ### 线程基础
 
 * 线程操作函数成功一般返回0，失败返回一个正的错误号。进程操作函数成功一般返回0，失败返回-1。
-* static __thread val_type val_name;  // __thread 声明，定义线程局部变量
+* `static __thread val_type val_name;`  // `__thread` 声明，定义线程局部变量
     * 线程局部变量是指每个线程都有一份对变量的拷贝，直到线程终止，会自动释放这一份拷贝。
 * Linux上线程有2种实现:
     * LinuxThreads : 轻量级进程
@@ -1756,8 +1871,9 @@ int main(int argc, char *argv[])
 
 ```c
 /*
- * 功能: 获取自己的线程ID
- * 说明: pthread_t一般是 unsigned long
+ * @brief   获取自己的线程ID
+ * @return  当前线程的pthread_t标识
+ * @note    pthread_t一般是 unsigned long
  */
 pthread_t pthread_self(void);
 ```
@@ -1766,8 +1882,10 @@ pthread_t pthread_self(void);
 
 ```c
 /*
- * 功能: 比较线程ID
- * 返回: 0，相等; !=0，不相等
+ * @brief   比较线程ID
+ * @param   t1 [IN] 线程ID1
+ * @param   t2 [IN] 线程ID2
+ * @return  0，相等; !=0，不相等
  */
 int pthread_equal(pthread_t t1, pthread_t t2);
 ```
@@ -1776,14 +1894,15 @@ int pthread_equal(pthread_t t1, pthread_t t2);
 
 ```c
 /*
- * 功能: 创建线程
- * 返回: 0，成功; >0，错误号。注意进程创建失败返回的负的错误号，和线程创建不同。
- * OUT : thread     保存线程唯一标志的地址
- * IN  : attr       传入的线程属性地址，NULL表示默认
- * IN  : start      线程执行函数地址，函数名
- * IN  : arg        传入线程执行函数的参数
- * 说明: 一个进程的所有线程共享代码段、全局数据段、堆、文件描述符，但各自的栈私有。
- * 除主线程之外的所有线程，栈的缺省值为2M(x86)/32M(x64)，主线程的栈要大的多。
+ * @brief   创建线程
+ * @param   thread [OUT] 保存线程唯一标志的地址
+ * @param   attr   [IN] 传入的线程属性地址，NULL表示默认
+ * @param   start  [IN] 线程执行函数地址，函数名
+ * @param   arg    [IN] 传入线程执行函数的参数
+ * @return  0，成功; >0，错误号
+ * @note    注意进程创建失败返回的负的错误号，和线程创建不同。
+ *          一个进程的所有线程共享代码段、全局数据段、堆、文件描述符，但各自的栈私有。
+ *          除主线程之外的所有线程，栈的缺省值为2M(x86)/32M(x64)，主线程的栈要大的多。
  */
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg);
 ```
@@ -1792,9 +1911,10 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
 
 ```c
 /*
- * 功能: 线程分离
- * 返回: 0，成功; >0，失败
- * 说明: 线程分离后，线程终止时会被自动清理，不能再调用pthread_join()获取其状态(未定义行为)
+ * @brief   线程分离
+ * @param   thread [IN] 线程ID
+ * @return  0，成功; >0，失败
+ * @note    线程分离后，线程终止时会被自动清理，不能再调用pthread_join()获取其状态(未定义行为)
  */
 int pthread_detach(pthread_t thread);
 ```
@@ -1803,12 +1923,13 @@ int pthread_detach(pthread_t thread);
 
 ```c
 /*
- * 功能: 连接终止的线程
- * 返回: 0，成功; >0，失败
- * OUT : retval     获取线程终止的返回值(线程终止的返回值是void*)，为NULL时表示不关心返回值。
- * 说明: 等待由thread标识的线程终止，如果线程已经终止，pthread_join() 会立即返回。
- *       线程未分离detached，必须调用pthread_join()链接，否则产生僵尸线程。
- *       线程可以join所属进程的任意其它未分离的线程，而进程只能由父进程wait子进程。
+ * @brief   连接终止的线程
+ * @param   thread [IN] 线程ID
+ * @param   retval [OUT] 获取线程终止的返回值(线程终止的返回值是void*)，为NULL时表示不关心返回值
+ * @return  0，成功; >0，失败
+ * @note    等待由thread标识的线程终止，如果线程已经终止，pthread_join() 会立即返回。
+ *          线程未分离detached，必须调用pthread_join()链接，否则产生僵尸线程。
+ *          线程可以join所属进程的任意其它未分离的线程，而进程只能由父进程wait子进程。
  */
 int pthread_join(pthread_t thread, void **retval);
 ```
@@ -1824,9 +1945,10 @@ int pthread_join(pthread_t thread, void **retval);
 
 ```c
 /*
- * 功能: 终止线程
- * IN  : retval     线程返回值地址，不要放在线程栈中
- * 说明: 线程执行函数自己调用或线程执行函数调用的函数调用
+ * @brief   终止线程
+ * @param   retval [IN] 线程返回值地址，不要放在线程栈中
+ * @return  无
+ * @note    线程执行函数自己调用或线程执行函数调用的函数调用
  */
 void pthread_exit(void *retval);
 ```
@@ -1835,10 +1957,10 @@ void pthread_exit(void *retval);
 
 ```c
 /*
- * 功能: 取消其它线程
- * 返回: 0，成功; >0，失败
- * 说明: 同进程其它线程调用，发送取消请求，不等待其它线程终止，被请求的线程可以选择忽略取消或控制如何取消
- *
+ * @brief   取消其它线程
+ * @param   thread [IN] 目标线程ID
+ * @return  0，成功; >0，失败
+ * @note    同进程其它线程调用，发送取消请求，不等待其它线程终止，被请求的线程可以选择忽略取消或控制如何取消
  */
 int pthread_cancel(pthread_t thread);
 ```
@@ -1847,9 +1969,10 @@ int pthread_cancel(pthread_t thread);
 
 ```c
 /*
- * 功能: 设置一个取消点
- * 说明: 设置一个取消点，线程有已挂起的取消请求时，调用该函数会终止线程。有些函数自带取消点。
- *       线程被取消的返回值是 PTHREAD_CANCELED
+ * @brief   设置一个取消点
+ * @return  无
+ * @note    设置一个取消点，线程有已挂起的取消请求时，调用该函数会终止线程。有些函数自带取消点。
+ *          线程被取消的返回值是 PTHREAD_CANCELED
  */
 void pthread_testcancel(void);
 ```
@@ -1858,14 +1981,15 @@ void pthread_testcancel(void);
 
 ```c
 /*
- * 功能: 修改对取消请求的响应状态
- * 返回: 0，成功; >0，失败
- * IN  : state      PTHREAD_CANCEL_DISABLE      禁止取消，收到取消请求时挂起请求，直到允许取消
- *                  PTHREAD_CANCEL_ENABLE       允许取消，默认状态
- * IN  : type       PTHREAD_CANCEL_ASYNCHRONOUS 异步取消，任何时点取消(可能立即取消)
- *                  PTHREAD_CANCEL_DEFERRED     延迟取消，默认状态，到达取消点时被请求的线程终止
- * OUT : oldxx      放置前一个取消状态或模式，NULL表示不关心前一个状态
- * fork()出来的子进程会继承对线程取消请求的响应状态，exec()会恢复默认。
+ * @brief   修改对取消请求的响应状态
+ * @param   state    [IN] PTHREAD_CANCEL_DISABLE      禁止取消，收到取消请求时挂起请求，直到允许取消
+ *                       PTHREAD_CANCEL_ENABLE       允许取消，默认状态
+ * @param   type     [IN] PTHREAD_CANCEL_ASYNCHRONOUS 异步取消，任何时点取消(可能立即取消)
+ *                       PTHREAD_CANCEL_DEFERRED     延迟取消，默认状态，到达取消点时被请求的线程终止
+ * @param   oldstate [OUT] 放置前一个取消状态，NULL表示不关心
+ * @param   oldtype  [OUT] 放置前一个取消模式，NULL表示不关心
+ * @return  0，成功; >0，失败
+ * @note    fork()出来的子进程会继承对线程取消请求的响应状态，exec()会恢复默认。
  */
 int pthread_setcancelstate(int state, int *oldstate);
 int pthread_setcanceltype(int type, int *oldtype);
@@ -1875,10 +1999,14 @@ int pthread_setcanceltype(int type, int *oldtype);
 
 ```c
 /*
- * 功能: 线程清理函数注册和删除(可能是宏实现)
- * 说明: push注册线程清理函数，放在线程执行函数开头; pop是删除，放在线程执行函数结尾
- *       线程清理函数routine会在线程中途取消或pthread_exit()终止时按线程注册相反的顺序执行，但直接从线程执行函数return不会执行
- *       执行到pop时，pop的execute为非0会执行后再删除最顶层清理函数，为0时直接删除最顶层清理函数不执行
+ * @brief   线程清理函数注册和删除(可能是宏实现)
+ * @param   routine [IN] 清理函数指针
+ * @param   arg     [IN] 传递给routine的参数
+ * @param   execute [IN] pop时是否执行最顶层清理函数，非0执行，0不执行
+ * @return  无
+ * @note    push注册线程清理函数，放在线程执行函数开头; pop是删除，放在线程执行函数结尾
+ *          线程清理函数routine会在线程中途取消或pthread_exit()终止时按线程注册相反的顺序执行，但直接从线程执行函数return不会执行
+ *          执行到pop时，pop的execute为非0会执行后再删除最顶层清理函数，为0时直接删除最顶层清理函数不执行
  */
 void pthread_cleanup_push(void (*routine)(void*), void *arg);
 void pthread_cleanup_pop(int execute);
@@ -1888,9 +2016,11 @@ void pthread_cleanup_pop(int execute);
 
 ```c
 /*
- * 功能: 一次性初始化
- * 返回: 0，成功; >0，失败
- * 说明: *once_control 的值等于PTHREAD_ONCE_INIT，才执行init函数并修改*once_control的值。
+ * @brief   一次性初始化
+ * @param   once_control [INOUT] 控制变量，必须初始化为PTHREAD_ONCE_INIT
+ * @param   init         [IN] 初始化函数指针
+ * @return  0，成功; >0，失败
+ * @note    *once_control 的值等于PTHREAD_ONCE_INIT，才执行init函数并修改*once_control的值。
  */
 pthread_once_t once_var = PTHREAD_ONCE_INIT;
 int pthread_once(pthread_once_t *once_control, void (*init)(void));
@@ -1918,27 +2048,27 @@ int pthread_once(pthread_once_t *once_control, void (*init)(void));
 
 * 工具属性
 
-    | 工具类型          | 名字空间  | 对象描述符           | 可访问性   | 持久性 |
-    | ---               | ---       | ---                  | ---        | ---  |
-    | PIPE无名管道      | 无名      | 文件描述符           | 相关进程   | 进程 |
-    | FIFO命名管道      | 文件路径名| 文件描述符           | 权限掩码   | 进程 |
-    | POSIX互斥锁       | 无名      | pthread_mutex_t*指针 |            | 进程 |
-    | POSIX读写锁       | 无名      | pthread_rwlock_t*指针|            | 进程 |
-    | POSIX条件变量     | 无名      | pthread_cond_t*指针  |            | 进程 |
-    | SYSV消息队列      | IPC键key_t| IPC标识符int         | 权限掩码   | 内核 |
-    | SYSV信号量        | IPC键key_t| IPC标识符int         | 权限掩码   | 内核 |
-    | SYSV共享内存      | IPC键key_t| IPC标识符int         | 权限掩码   | 内核 |
-    | POSIX消息队列     | IPC路径名 | mqd_t描述符          | 权限掩码   | 内核 |
-    | POSIX命名信号量   | IPC路径名 | sem_t*指针           | 权限掩码   | 内核 |
-    | POSIX无名信号量   | 无名      | sem_t*指针           | 内存权限   | 进程 |
-    | POSIX共享内存     | IPC路径名 | 文件描述符           | 权限掩码   | 内核 |
-    | 文件内存映射      | 路径名    | 文件描述符           | 权限掩码   | 文件 |
-    | 匿名内存映射      | 无名      | 无                   | 相关进程   | 进程 |
-    | flock()文件锁     | 文件路径名| 文件描述符           | open()操作 | 进程 |
-    | fcntl()文件锁     | 文件路径名| 文件描述符           | open()操作 | 进程 |
-    | TCP套接字         | IP+端口   | 文件描述符           | 任意进程   | 进程 |
-    | UDP套接字         | IP+端口   | 文件描述符           | 任意进程   | 进程 |
-    | Unix域套接字      | 路径名    | 文件描述符           | 权限掩码   | 进程 |
+    | 工具类型          | 名字空间  | 对象描述符              | 可访问性   | 持久性 |
+    | ---               | ---       | ---                     | ---        | ---  |
+    | PIPE无名管道      | 无名      | 文件描述符              | 相关进程   | 进程 |
+    | FIFO命名管道      | 文件路径名| 文件描述符              | 权限掩码   | 进程 |
+    | POSIX互斥锁       | 无名      | `pthread_mutex_t*` 指针 |            | 进程 |
+    | POSIX读写锁       | 无名      | `pthread_rwlock_t*` 指针|            | 进程 |
+    | POSIX条件变量     | 无名      | `pthread_cond_t*` 指针  |            | 进程 |
+    | SYSV消息队列      | IPC键key_t| IPC标识符int            | 权限掩码   | 内核 |
+    | SYSV信号量        | IPC键key_t| IPC标识符int            | 权限掩码   | 内核 |
+    | SYSV共享内存      | IPC键key_t| IPC标识符int            | 权限掩码   | 内核 |
+    | POSIX消息队列     | IPC路径名 | mqd_t描述符             | 权限掩码   | 内核 |
+    | POSIX命名信号量   | IPC路径名 | sem_t*指针              | 权限掩码   | 内核 |
+    | POSIX无名信号量   | 无名      | sem_t*指针              | 内存权限   | 进程 |
+    | POSIX共享内存     | IPC路径名 | 文件描述符              | 权限掩码   | 内核 |
+    | 文件内存映射      | 路径名    | 文件描述符              | 权限掩码   | 文件 |
+    | 匿名内存映射      | 无名      | 无                      | 相关进程   | 进程 |
+    | flock()文件锁     | 文件路径名| 文件描述符              | open()操作 | 进程 |
+    | fcntl()文件锁     | 文件路径名| 文件描述符              | open()操作 | 进程 |
+    | TCP套接字         | IP+端口   | 文件描述符              | 任意进程   | 进程 |
+    | UDP套接字         | IP+端口   | 文件描述符              | 任意进程   | 进程 |
+    | Unix域套接字      | 路径名    | 文件描述符              | 权限掩码   | 进程 |
 
 * 名词解释:
     * 相关进程: 同一进程fork()出来的进程。父进程和子进程之间，两个子进程之间。
@@ -1949,7 +2079,6 @@ int pthread_once(pthread_once_t *once_control, void (*init)(void));
         * 注：FIFO特殊，所有进程关闭了FIFO，但文件系统的FIFO节点一直保持着，需要unlink()显式删除
     * 内核持久性: IPC对象一直存在直到内核重新自举或显示删除该对象为止
     * 文件系统持久性: IPC对象一直存在直到内核显示删除该对象为止，内核重新自举不会删除该对象
-
 <br>
 
 * 数据传输说明:
@@ -1978,20 +2107,20 @@ int pthread_once(pthread_once_t *once_control, void (*init)(void));
 * 管道说明
     * 管道中数据的传递方向是单向的，一端用于读取，另一端用于写入。
     * 多个进程写入同一管道，在一个时刻写入数据不超过PIPE_BUF(Linux是4096)个字节就不会出现多个进程的数据交叉。超过PIPE_BUF，内核会将数据分割成几个小的片段传输，在读者从管道读取消耗数据时再附加上后续数据。
-    * 读取进程事先关闭写入描述符原因: 写入进程完成写入并关闭写入描述符后，读取进程读完管道数据之后可以看到文件结束; 否则读取进程读完管道数据之后read()会阻��以等待数据。
+    * 读取进程事先关闭写入描述符原因: 写入进程完成写入并关闭写入描述符后，读取进程读完管道数据之后可以看到文件结束; 否则读取进程读完管道数据之后read()会阻塞以等待数据。
     * 写入进程事先未关闭读取描述符，读取进程关闭读取描述符后，写入进程继续写数据会将数据充满整个管道，最后write()会永远阻塞。
 
 * 打开一个FIFO的语义
 
-    | 打开目的 | open()标记            | 有一端已经打开写入 | 还没有端打开写入 |
-    | ---      | ---                   | ---               | ---            |
-    | 读取     | O_RDONLY              | 立即成功           | 阻塞 |
-    | 读取     | O_RDONLY | O_NONBLOCK | 立即成功           | 立即成功 |
+    | 打开目的 | open()标记             | 有一端已经打开写入 | 还没有端打开写入 |
+    | ---      | ---                    | ---                | ---              |
+    | 读取     | O_RDONLY               | 立即成功           | 阻塞 |
+    | 读取     | O_RDONLY \| O_NONBLOCK | 立即成功           | 立即成功 |
 
-    | 打开目的 | open()标记            | 有一端已经打开读取 | 还没有端打开读取 |
-    | ---      | ---                   | ---               | ---            |
-    | 写入     | O_WRONLY              | 立即成功           | 阻塞 |
-    | 写入     | O_WRONLY | O_NONBLOCK | 立即成功           | 失败(ENXIO) |
+    | 打开目的 | open()标记             | 有一端已经打开读取 | 还没有端打开读取 |
+    | ---      | ---                    | ---                | ---              |
+    | 写入     | O_WRONLY               | 立即成功           | 阻塞 |
+    | 写入     | O_WRONLY \| O_NONBLOCK | 立即成功           | 失败(ENXIO) |
 
     * 创建FIFO后，open() 只能以 O_RDONLY 或 O_WRONLY 标识打开FIFO，不能以 O_RDWR 标识打开FIFO。
     * O_NONBLOCK会影响后续的read()、write()调用的表现，O_NONBLOCK还可以防止下面两种情况死锁:
@@ -2001,7 +2130,7 @@ int pthread_once(pthread_once_t *once_control, void (*init)(void));
 * 向一个包含p字节的PIPE/FIFO中读取n字节的语义
 
     | O_NONBLOCK | p=0写入端打开 | p=0写入端关闭 | p < n     | p >= n |
-    | ---        | ---           | ---           | ---       | --- |
+    | ---        | ---           | ---           | ---       | ---    |
     | NO         | 阻塞          | 返回0(EOF)    | 读取p字节 | 读取n字节 |
     | YES        | 失败(EAGAIN)  | 返回0(EOF)    | 读取p字节 | 读取n字节 |
 
@@ -2009,11 +2138,11 @@ int pthread_once(pthread_once_t *once_control, void (*init)(void));
     * 当所有引用管道或FIFO的描述符被关闭后，所有未被读取的数据将会丢弃。
 
 * 向一个PIPE/FIFO中写入n字节的语义
-    | O_NONBLOCK  | 读取端关闭     |  n<=PIPE_BUF读取端打开 | |         n>PIPE_BUF读取端打开 | |
-    | --- | --- | --- | --- | --- | --- |
-    |             | 任意           | 可用空间<n   | 可用空间>=n   | 可用空间==0  | 可用空间>0 |
-    | NO          | SIGPIPE+EPIPE  | 阻塞         | 原子写入n字节 | 阻塞         | 部分写多次(阻塞)，最终写入n字节 |
-    | YES         | SIGPIPE+EPIPE  | 失败(EAGAIN) | 原子写入n字节 | 失败(EAGAIN) | 部分写一次，最终写入这次可用空间字节 |
+    | O_NONBLOCK  | 读取端关闭     | n<=PIPE_BUF读取端打开 | 同左  | n>PIPE_BUF读取端打开 | 同左 |
+    | ---         | ---            | ---          | ---            | ---            | ---        |
+    |             | 任意           | 可用空间 `<n`| 可用空间 `>=n` | 可用空间 `==0` | 可用空间 `>0` |
+    | NO          | SIGPIPE+EPIPE  | 阻塞         | 原子写入n字节  | 阻塞           | 部分写多次(阻塞)，最终写入n字节 |
+    | YES         | SIGPIPE+EPIPE  | 失败(EAGAIN) | 原子写入n字节  | 失败(EAGAIN)   | 部分写一次，最终写入这次可用空间字节 |
 
     * 向没有任何读取描述符打开的管道或FIFO写入数据，内核会向进程发送SIGPIPE信号，SIGPIPE信号默认会杀死进程。
 
@@ -2050,12 +2179,11 @@ fcntl(fd, F_SETFL, flags);
 
 ```c
 /*
- * 功能: 创建PIPE
- * bash: 竖线 | ，如: ls | wc
- * 返回: 0，成功; -1，失败
- * OUT : fd[0]      PIPE读取端
- *       fd[1]      PIPE写入端
- * 说明: exec()不会自动关闭管道。
+ * @brief   创建PIPE
+ * @param   fd [OUT] PIPE文件描述符数组，fd[0]读取端，fd[1]写入端
+ * @return  0，成功; -1，失败
+ * @note    bash: 竖线 | ，如: ls | wc
+ *          exec()不会自动关闭管道。
  */
 #include <unistd.h>
 int pipe(int fd[2]);
@@ -2078,12 +2206,12 @@ if (pfd[0] != STDIN_FILENO) {
 
 ```c
 /*
- * 功能: 创建FIFO
- * bash: mkfifo [-m mode] pathname
- * 返回: 0，成功; -1，失败
- * IN  : pathname   路径名
- *       mode       模式，类似打开文件
- * 说明: mkfifo已隐含指定O_CREAT|O_EXCL，即它要么创建一个新的FIFO，要么返回一个EEXIST错误。
+ * @brief   创建FIFO
+ * @param   pathname [IN] 路径名
+ * @param   mode     [IN] 模式，类似打开文件
+ * @return  0，成功; -1，失败
+ * @note    bash: mkfifo [-m mode] pathname
+ *          mkfifo已隐含指定O_CREAT|O_EXCL，即它要么创建一个新的FIFO，要么返回一个EEXIST错误。
  */
 #include <sys/stat.h>
 int mkfifo(const char *pathname, mode_t mode);
@@ -2092,13 +2220,13 @@ int mkfifo(const char *pathname, mode_t mode);
 ## SYSV IPC
 
 | 接口      | 消息队列            | 信号量           | 共享内存 |
-| ---       | ---                 | ---             | --- |
-| 头文件    | <sys/msg.h>         | <sys/sem.h>     | <sys/shm.h> |
-| 描述符    | msqid_ds            | semid_ds        | shmid_ds |
-| 创建/打开 | msgget()            | semget()        | shmget() + shmat() |
-| 关闭对象  | 无                  | 无              | shmdt() |
-| 控制操作  | msgctl()            | semctl()        | shmctl() |
-| 执行IPC   | msgsnd() / msgrcv() | msgop()         |   |
+| ---       | ---                 | ---              | --- |
+| 头文件    | `<sys/msg.h>`       | `<sys/sem.h>`    | `<sys/shm.h>` |
+| 描述符    | msqid_ds            | semid_ds         | shmid_ds |
+| 创建/打开 | msgget()            | semget()         | shmget() + shmat() |
+| 关闭对象  | 无                  | 无               | shmdt() |
+| 控制操作  | msgctl()            | semctl()         | shmctl() |
+| 执行IPC   | msgsnd() / msgrcv() | semop()          |   -   |
 |           | 发送/接收 消息      | 测试/调整 信号量 | 操作共享内存 |
 
 * SYSV IPC描述符对系统全局可见，所有访问同一SYSV IPC对象的进程使用相同的描述符。
@@ -2109,22 +2237,22 @@ int mkfifo(const char *pathname, mode_t mode);
 
 ```c
 /*
- * 功能: 产生近似唯一的key
- * 返回: 成功返回key，失败返回-1
- * IN  : pathname   文件路径全名，必须是可以应用stat()的既有文件，取得文件的i-node
- * IN  : proj       附加，使用最低8位，0时结果未定义
- * 说明: 不同文件可能生成相同的key，删除重建文件i-node会变化，符号链接会解引用
- * key的组成: proj最低8位，文件系统设备号(次设备号)最低8位，文件的i-node号最低16位
+ * @brief   产生近似唯一的key
+ * @param   pathname [IN] 文件路径全名，必须是可以应用stat()的既有文件，取得文件的i-node
+ * @param   proj     [IN] 附加，使用最低8位，0时结果未定义
+ * @return  成功返回key，失败返回-1
+ * @note    不同文件可能生成相同的key，删除重建文件i-node会变化，符号链接会解引用
+ *          key的组成: proj最低8位，文件系统设备号(次设备号)最低8位，文件的i-node号最低16位
  */
-key_t ftok(char *pathname, int proj)
+key_t ftok(char *pathname, int proj);
 ```
 ### ipc_perm - ipc_perm结构体
 
 ```c
 /*
- * 功能: ipc_perm结构体
- * 进程的特权性、有效用户ID和辅助组ID与uid、gid比较确定访问修改权限
- * mode和文件I/O的mode相同
+ * @brief   ipc_perm结构体
+ * @note    进程的特权性、有效用户ID和辅助组ID与uid、gid比较确定访问修改权限
+ *          mode和文件I/O的mode相同
  */
 struct ipc_perm {
     key_t           __key;      /* Key, as supplied to 'get' call */
@@ -2143,7 +2271,7 @@ struct ipc_perm {
 
 ```c
 /*
- * 功能: 消息队列数据结构
+ * @brief   消息队列数据结构
  */
 struct msqid_ds {
     struct ipc_perm msg_perm;   /* Ownership and permissions */
@@ -2152,7 +2280,7 @@ struct msqid_ds {
     time_t          msg_ctime;  /* Time of last change */
     unsigned long __msg_cbytes; /* Number of bytes in queue */  // 所有消息mtext字段字节数总和
     msgqnum_t       msg_qnum;   /* Number of messages in queue */ // 当前消息数
-    msglen_t m      sg_qbytes;  /* Maximum bytes in queue */  // mtext字段最大长度，默认MSGMNB(x86-64为0x7fffffff)
+    msglen_t        msg_qbytes; /* Maximum bytes in queue */  // mtext字段最大长度，默认MSGMNB(x86-64为0x7fffffff)
     pid_t           msg_lspid;  /* PID of last msgsnd() */
     pid_t           msg_lrpid;  /* PID of last msgrcv() */
 };
@@ -2162,10 +2290,10 @@ struct msqid_ds {
 
 ```c
 /*
- * 功能: 新建或打开消息队列
- * 返回: 成功返回消息队列描述符，失败返回-1
- * IN  : key        键值
- * IN  : msgflg     模式，IPC_CREAT IPC_EXCL
+ * @brief   新建或打开消息队列
+ * @param   key    [IN] 键值
+ * @param   msgflg [IN] 模式，IPC_CREAT IPC_EXCL
+ * @return  成功返回消息队列描述符，失败返回-1
  */
 int msgget(key_t key, int msgflg);
 ```
@@ -2174,18 +2302,18 @@ int msgget(key_t key, int msgflg);
 
 ```c
 /*
- * 功能: 发送消息
- * 返回: 成功返回0，失败返回-1
- * IN  : msqid      消息队列描述符
- * IN  : msgp       要发送的消息的缓冲区mymsg
- * IN  : msgsz      要发送的消息的长度，不含消息类型mtype的长度
- * IN  : msgflg     发送标志: IPC_NOWAIT(非阻塞)
- * 说明: 阻塞的msgsnd()调用可能会被信号处理器中断，此时失败返回EINTR错误
+ * @brief   发送消息
+ * @param   msqid  [IN] 消息队列描述符
+ * @param   msgp   [IN] 要发送的消息的缓冲区mymsg
+ * @param   msgsz  [IN] 要发送的消息的长度，不含消息类型mtype的长度
+ * @param   msgflg [IN] 发送标志: IPC_NOWAIT(非阻塞)
+ * @return  成功返回0，失败返回-1
+ * @note    阻塞的msgsnd()调用可能会被信号处理器中断，此时失败返回EINTR错误
  */
 struct mymsg {
-long                mtype;        /* Message type */
-char                mtext[msgsz]; /* Message body */
-}
+    long                mtype;        /* Message type */
+    char                mtext[msgsz]; /* Message body */
+};
 int msgsnd(int msqid, const void *msgp, size_t msgsz, int msgflg);
 ```
 
@@ -2193,18 +2321,18 @@ int msgsnd(int msqid, const void *msgp, size_t msgsz, int msgflg);
 
 ```c
 /*
- * 功能: 接收消息
- * 返回: 成功返回读取字节数，失败返回-1
- * IN  : msqid      消息队列描述符
- * OUT : msgp       接收到消息的存放的缓冲区
- * IN  : maxmsgsz   缓冲区的长度，不含消息类型mtype的长度
- * IN  : msgtyp     要接收消息的类型，0表示不选择类型，>0 选择对应类型， < 0 选择小于等于绝对值的类型
- * IN  : msgflg     标志: IPC_NOWAIT(非阻塞)
- *                  MSG_EXPECT(msgtyp>0 非对应类型)
- *                  MSG_NOERROR(maxmsgsz可能小于mtext实际长度，指定此标志会截断mtext返回，
- *                      否则调用失败且不从消息队列删除这条信息)
- * 说明: 阻塞的msgrcv()调用会被信号处理器中断，此时失败返回EINTR错误
- * 每条消息可以用一个整数表示类型，从消息队列中读取消息可以按照先入先出，也可以按照类型。
+ * @brief   接收消息
+ * @param   msqid    [IN] 消息队列描述符
+ * @param   msgp     [OUT] 接收到消息的存放的缓冲区
+ * @param   maxmsgsz [IN] 缓冲区的长度，不含消息类型mtype的长度
+ * @param   msgtyp   [IN] 要接收消息的类型，0表示不选择类型，>0 选择对应类型， < 0 选择小于等于绝对值的类型
+ * @param   msgflg   [IN] 标志: IPC_NOWAIT(非阻塞)
+ *                          MSG_EXCEPT(msgtyp>0 非对应类型)
+ *                          MSG_NOERROR(maxmsgsz可能小于mtext实际长度，指定此标志会截断mtext返回，
+ *                              否则调用失败且不从消息队列删除这条信息)
+ * @return  成功返回读取字节数，失败返回-1
+ * @note    阻塞的msgrcv()调用会被信号处理器中断，此时失败返回EINTR错误
+ *          每条消息可以用一个整数表示类型，从消息队列中读取消息可以按照先入先出，也可以按照类型。
  */
 ssize_t msgrcv(int msqid, void *msgp, size_t maxmsgsz, long msgtyp, int msgflg);
 ```
@@ -2213,16 +2341,16 @@ ssize_t msgrcv(int msqid, void *msgp, size_t maxmsgsz, long msgtyp, int msgflg);
 
 ```c
 /*
- * 功能: 控制消息队列
- * 返回: 成功返回读取字节数，失败返回-1
- * IN  : msqid      消息队列描述符
- * IN  : cmd        指令
- * INOUT: buf       数据存储区
- * cmd指令:
- * IPC_RMID         立即删除消息队列，所有消息会被清空，msgsnd/msgrcv 返回EIDRM错误，msgsnd/msgrcv阻塞进程会唤醒。
- * IPC_STAT         取得消息队列数据结构副本
- * IPC_SET          修改消息队列数据结构，可修改msg_perm的 uid gid mode，特权进程可修改 sg_qbytes
- * IPC_INFO         取得消息队列资源消耗情况，获取entries数组最大下标
+ * @brief   控制消息队列
+ * @param   msqid [IN] 消息队列描述符
+ * @param   cmd   [IN] 指令
+ * @param   buf   [INOUT] 数据存储区
+ * @return  成功返回0，失败返回-1
+ * @note    cmd指令:
+ *          IPC_RMID         立即删除消息队列，所有消息会被清空，msgsnd/msgrcv 返回EIDRM错误，msgsnd/msgrcv阻塞进程会唤醒。
+ *          IPC_STAT         取得消息队列数据结构副本
+ *          IPC_SET          修改消息队列数据结构，可修改msg_perm的 uid gid mode，特权进程可修改 msg_qbytes
+ *          IPC_INFO         取得消息队列资源消耗情况，获取entries数组最大下标
  */
 int msgctl(int msqid, int cmd, ... /* struct msqid_ds *buf */);
 ```
@@ -2233,10 +2361,10 @@ int msgctl(int msqid, int cmd, ... /* struct msqid_ds *buf */);
 
 ```c
 /*
- * 功能: 信号量集数据结构
+ * @brief   信号量集数据结构
  */
 struct semid_ds {
-    struct ipc_perm sem_perm; /* Ownership and permissions */
+    struct ipc_perm sem_perm;  /* Ownership and permissions */
     time_t          sem_otime; /* Time of last semop() */
     time_t          sem_ctime; /* Time of last change */
     unsigned long   sem_nsems; /* Number of semaphores in set */
@@ -2247,13 +2375,13 @@ struct semid_ds {
 
 ```c
 /*
- * 功能: 新建或打开信号量集
- * 返回: 成功返回信号量集描述符，失败返回-1
- * IN  : key        键值
- * IN  : nsems      集合中信号量的数目，nsems必须大于0
- * IN  : semflg     模式，IPC_CREAT IPC_EXCL
- * 说明: nsems必须大于0，当打开一个既有的信号量集合时，nsems必须要小于等于集合的大小
- * Linux中信号量集中信号量的值默认初始化为0，其它实现可能不同，所以必须显示初始化。
+ * @brief   新建或打开信号量集
+ * @param   key    [IN] 键值
+ * @param   nsems  [IN] 集合中信号量的数目，nsems必须大于0
+ * @param   semflg [IN] 模式，IPC_CREAT IPC_EXCL
+ * @return  成功返回信号量集描述符，失败返回-1
+ * @note    nsems必须大于0，当打开一个既有的信号量集合时，nsems必须要小于等于集合的大小
+ *          Linux中信号量集中信号量的值默认初始化为0，其它实现可能不同，所以必须显示初始化。
  */
 int semget(key_t key, int nsems, int semflg);
 ```
@@ -2262,16 +2390,16 @@ int semget(key_t key, int nsems, int semflg);
 
 ```c
 /*
- * 功能: 操作信号量的值
- * 返回: 成功返回0，失败返回-1
- * IN  : semid      信号量集描述符
- * IN  : sops       操作的数组
- * IN  : nsops      数组的大小，必须大于1
- * 说明: 阻塞的msgrcv()调用会被信号处理器中断，此时失败返回EINTR错误
- * sem_num          信号量序号，从0开始
- * sem_op           操作类型，>0 信号量值加sem_op，=0 等待信号量值变为0，< 0 信号量值减sem_op绝对值
- * sem_flg          标志: IPC_NOWAIT(非阻塞) SEM_UNDO(进程意外终止时撤销带有SEM_UNDO的sem_op操作)
-
+ * @brief   操作信号量的值
+ * @param   semid   [IN] 信号量集描述符
+ * @param   sops    [IN] 操作的sembuf数组
+ * @param   nsops   [IN] 数组的大小，必须大于0
+ * @param   timeout [IN] semtimedop超时时间
+ * @return  成功返回0，失败返回-1
+ * @note    阻塞的semop()调用会被信号处理器中断，此时失败返回EINTR错误
+ *          sem_num          信号量序号，从0开始
+ *          sem_op           操作类型，>0 信号量值加sem_op，=0 等待信号量值变为0，< 0 信号量值减sem_op绝对值
+ *          sem_flg          标志: IPC_NOWAIT(非阻塞) SEM_UNDO(进程意外终止时撤销带有SEM_UNDO的sem_op操作)
  */
 struct sembuf {
     unsigned short  sem_num;    /* Semaphore number */
@@ -2286,25 +2414,25 @@ int semtimedop(int semid, struct sembuf *sops, unsigned int nsops, struct timesp
 
 ```c
 /*
- * 功能: 控制信号量(集)
- * 返回: 成功依据cmd，失败返回-1
- * IN  : msqid      信号量集描述符
- * IN  : sem_num    信号量序号，从0开始，有些操作会忽略这个参数的值
- * IN  : cmd        操作类型
- * IN  : buf        数据存储区
- * cmd指令(用于信号量集):
- * IPC_RMID         立即删除信号量集，所有消息会被清空，semop 返回EIDRM错误，semop阻塞进程会唤醒。
- * IPC_STAT         取得信号量集数据结构副本
- * IPC_SET          修改信号量集数据结构，可修改msg_perm的 uid gid mode
- * IPC_INFO         取得信号量集资源消耗情况，获取entries数组最大下标
- * GETALL           获取全部信号量的值，存入到arg.array
- * SETALL           初始化全部信号量的值为, arg.array
- * cmd指令(用于单个信号量):
- * GETVAL           获取信号量的值，无需arg
- * SETVAL           初始化信号量的值为, arg.val
- * GETPID           返回上一次在该信号量上执行semop的进程ID
- * GETNCNT          返回等待该信号量的值增长的进程数
- * GETZCNT          返回等待该信号量的值变为0的进程数
+ * @brief   控制信号量(集)
+ * @param   semid  [IN] 信号量集描述符
+ * @param   semnum [IN] 信号量序号，从0开始，有些操作会忽略这个参数的值
+ * @param   cmd    [IN] 操作类型
+ * @param   arg    [IN] 数据存储区(union semun)
+ * @return  成功依据cmd，失败返回-1
+ * @note    cmd指令(用于信号量集):
+ *          IPC_RMID         立即删除信号量集，所有消息会被清空，semop 返回EIDRM错误，semop阻塞进程会唤醒。
+ *          IPC_STAT         取得信号量集数据结构副本
+ *          IPC_SET          修改信号量集数据结构，可修改sem_perm的 uid gid mode
+ *          IPC_INFO         取得信号量集资源消耗情况，获取entries数组最大下标
+ *          GETALL           获取全部信号量的值，存入到arg.array
+ *          SETALL           初始化全部信号量的值为, arg.array
+ *          cmd指令(用于单个信号量):
+ *          GETVAL           获取信号量的值，无需arg
+ *          SETVAL           初始化信号量的值为, arg.val
+ *          GETPID           返回上一次在该信号量上执行semop的进程ID
+ *          GETNCNT          返回等待该信号量的值增长的进程数
+ *          GETZCNT          返回等待该信号量的值变为0的进程数
  */
 union semun { /* Used in calls to semctl() */
     int             val;
@@ -2323,7 +2451,7 @@ int semctl(int semid, int semnum, int cmd, ... /* union semun arg */);
 
 ```c
 /*
- * 功能: 共享内存数据结构
+ * @brief   共享内存数据结构
  */
 struct shmid_ds {
     struct ipc_perm shm_perm;   /* Ownership and permissions */
@@ -2341,12 +2469,12 @@ struct shmid_ds {
 
 ```c
 /*
- * 功能: 新建或打开共享内存段
- * 返回: 成功返回共享内存段描述符，失败返回-1
- * IN  : key        键值
- * IN  : size       共享内存段大小，上舍到分页大小的整数倍
- * IN  : shmflg     模式，IPC_CREAT  IPC_EXCL
- *                  SHM_HUGETLB(巨页而不是分页) SHM_NORESERVE
+ * @brief   新建或打开共享内存段
+ * @param   key    [IN] 键值
+ * @param   size   [IN] 共享内存段大小，上舍到分页大小的整数倍
+ * @param   shmflg [IN] 模式，IPC_CREAT  IPC_EXCL
+ *                      SHM_HUGETLB(巨页而不是分页) SHM_NORESERVE
+ * @return  成功返回共享内存段描述符，失败返回-1
  */
 int shmget(key_t key, size_t size, int shmflg);
 ```
@@ -2355,12 +2483,12 @@ int shmget(key_t key, size_t size, int shmflg);
 
 ```c
 /*
- * 功能: 将共享内存段映射到进程虚拟地址空间
- * 返回: 成功返回内存地址，失败返回-1
- * IN  : shmid      共享内存段描述符
- * IN  : shmaddr    指定调用进程内被映射区的起始地址，通常设为NULL，若未指定SHM_RND，则shmaddr必须为SHMLBA的整数倍
- * IN  : shmflg     模式，SHM_RDONLY(只读) SHM_REMAP(重映射，Linux扩展) SHM_RND(shmaddr上舍到SHMLBA的整数倍)
- *                  SHM_HUGETLB(巨页而不是分页) SHM_NORESERVE
+ * @brief   将共享内存段映射到进程虚拟地址空间
+ * @param   shmid   [IN] 共享内存段描述符
+ * @param   shmaddr [IN] 指定调用进程内被映射区的起始地址，通常设为NULL，若未指定SHM_RND，则shmaddr必须为SHMLBA的整数倍
+ * @param   shmflg  [IN] 模式，SHM_RDONLY(只读) SHM_REMAP(重映射，Linux扩展) SHM_RND(shmaddr上舍到SHMLBA的整数倍)
+ *                       SHM_HUGETLB(巨页而不是分页) SHM_NORESERVE
+ * @return  成功返回内存地址，失败返回(void*)-1
  */
 void *shmat(int shmid, const void *shmaddr, int shmflg);
 ```
@@ -2369,9 +2497,9 @@ void *shmat(int shmid, const void *shmaddr, int shmflg);
 
 ```c
 /*
- * 功能: 解除共享内存段到进程虚拟地址空间的映射
- * 返回: 成功返回内存地址，失败返回-1
- * IN  : shmaddr    指定调用进程内被映射区的起始地址
+ * @brief   解除共享内存段到进程虚拟地址空间的映射
+ * @param   shmaddr [IN] 指定调用进程内被映射区的起始地址
+ * @return  成功返回0，失败返回-1
  */
 int shmdt(const void *shmaddr);
 ```
@@ -2380,18 +2508,18 @@ int shmdt(const void *shmaddr);
 
 ```c
 /*
- * 功能: 控制共享内存段
- * 返回: 成功0，失败返回-1
- * IN  : msqid      共享内存段描述符
- * IN  : cmd        命令
- * INOUT: buf       数据存储区
- * cmd指令:
- * IPC_RMID         删除控制共享内存段(需要所有进程解除映射)，所有消息会被清空，msgsnd/msgrcv 返回EIDRM错误，msgsnd/msgrcv阻塞进程会唤醒。
- * IPC_STAT         取得共享内存段数据结构副本
- * IPC_SET          修改共享内存段数据结构，可修改shm_perm的 uid gid mode
- * IPC_INFO         取得消息队列资源消耗情况，获取entries数组最大下标
- * SHM_LOCK         共享内存段内存锁
- * SHM_UNLOCK       共享内存段内存解锁
+ * @brief   控制共享内存段
+ * @param   shmid [IN] 共享内存段描述符
+ * @param   cmd   [IN] 命令
+ * @param   buf   [INOUT] 数据存储区
+ * @return  成功0，失败返回-1
+ * @note    cmd指令:
+ *          IPC_RMID         删除控制共享内存段(需要所有进程解除映射)，所有消息会被清空，shmat/shmdt 返回EIDRM错误，shmat/shmdt阻塞进程会唤醒。
+ *          IPC_STAT         取得共享内存段数据结构副本
+ *          IPC_SET          修改共享内存段数据结构，可修改shm_perm的 uid gid mode
+ *          IPC_INFO         取得共享内存资源消耗情况，获取entries数组最大下标
+ *          SHM_LOCK         共享内存段内存锁
+ *          SHM_UNLOCK       共享内存段内存解锁
  */
 int shmctl(int shmid, int cmd, struct shmid_ds *buf);
 ```
@@ -2401,7 +2529,7 @@ int shmctl(int shmid, int cmd, struct shmid_ds *buf);
 | 接口      | 消息队列      | 信号量        | 共享内存        |
 | ----      | ----          | ----          | ----            |
 | 头文件    | <mqueue.h>    | <semaphore.h> | <mman.h>        |
-| 描述符    | mqd_t         | sem_t*        | int(文件描述符) |
+| 描述符    | mqd_t         | `sem_t*`      | int(文件描述符) |
 | 创建/打开 | mq_open()     | sem_open()    | shm_open()      |
 | 关闭对象  | mq_close()    | sem_close()   | close()         |
 | 断开连接  | mq_unlink()   | sem_unlink()  | shm_unlink()    |
@@ -2420,8 +2548,8 @@ int shmctl(int shmid, int cmd, struct shmid_ds *buf);
 
 ```c
 /*
- * 功能: 消息队列属性
- * 说明: 只能修改mq_flags的O_NONBLOCK标志，mq_maxmsg和mq_msgsize在mq_open()中指定后就无法修改，mq_curmsgs动态变化
+ * @brief   消息队列属性
+ * @note    只能修改mq_flags的O_NONBLOCK标志，mq_maxmsg和mq_msgsize在mq_open()中指定后就无法修改，mq_curmsgs动态变化
  */
 struct mq_attr {
     long mq_flags;   // 标志
@@ -2435,10 +2563,10 @@ struct mq_attr {
 
 ```c
 /*
- * 功能: 获取消息队列属性
- * 返回: 成功返回0，失败返回-1
- * IN  : mqdes      消息队列描述符
- * OUT : attr       获取的消息队列属性
+ * @brief   获取消息队列属性
+ * @param   mqdes [IN] 消息队列描述符
+ * @param   attr  [OUT] 获取的消息队列属性
+ * @return  成功返回0，失败返回-1
  */
 int mq_getattr(mqd_t mqdes, struct mq_attr *attr);
 ```
@@ -2447,12 +2575,12 @@ int mq_getattr(mqd_t mqdes, struct mq_attr *attr);
 
 ```c
 /*
- * 功能: 设置消息队列属性
- * 返回: 成功返回0，失败返回-1
- * IN  : mqdes      消息队列描述符
- * IN  : newattr    设置的消息队列属性
- * OUT : oldattr    返回原先的消息队列属性，可以为NULL
- * 说明: 只能修改mq_flags的O_NONBLOCK标志。
+ * @brief   设置消息队列属性
+ * @param   mqdes   [IN] 消息队列描述符
+ * @param   newattr [IN] 设置的消息队列属性
+ * @param   oldattr [OUT] 返回原先的消息队列属性，可以为NULL
+ * @return  成功返回0，失败返回-1
+ * @note    只能修改mq_flags的O_NONBLOCK标志。
  */
 int mq_setattr(mqd_t mqdes, const struct mq_attr *newattr, struct mq_attr *oldattr);
 ```
@@ -2461,16 +2589,16 @@ int mq_setattr(mqd_t mqdes, const struct mq_attr *newattr, struct mq_attr *oldat
 
 ```c
 /*
- * 功能: 新建或打开消息队列
- * 返回: 成功返回消息队列描述符mqd_t，失败返回-1
- * IN  : name       绝对文件路径名 /mq_xxx
- * IN  : oflag      可以使用 O_CREAT O_EXCL O_NONBLOCK    O_RDONLY O_WRONLY O_RDWR
- * IN  : mode       权限，和文件I/O一样
- * IN  : attr       属性，NULL时取默认
- * 说明: 新建消息队列需要mode和attr，否则可以省略
- * mq_send()需要写权限，mq_receive() 需要读权限
- * mqd_t在Linux上是int，Solaris上是void*。
- * 在fork()中子进程会得到mqd_t副本，但不会继承消息通知注册。
+ * @brief   新建或打开消息队列
+ * @param   name  [IN] 绝对文件路径名 /mq_xxx
+ * @param   oflag [IN] 可以使用 O_CREAT O_EXCL O_NONBLOCK    O_RDONLY O_WRONLY O_RDWR
+ * @param   mode  [IN] 权限，和文件I/O一样
+ * @param   attr  [IN] 属性，NULL时取默认
+ * @return  成功返回消息队列描述符mqd_t，失败返回-1
+ * @note    新建消息队列需要mode和attr，否则可以省略
+ *          mq_send()需要写权限，mq_receive() 需要读权限
+ *          mqd_t在Linux上是int，Solaris上是void*。
+ *          在fork()中子进程会得到mqd_t副本，但不会继承消息通知注册。
  */
 mqd_t mq_open(const char *name, int oflag, .../* mode_t mode, struct mq_attr *attr */);
 ```
@@ -2479,10 +2607,10 @@ mqd_t mq_open(const char *name, int oflag, .../* mode_t mode, struct mq_attr *at
 
 ```c
 /*
- * 功能: 关闭消息队列
- * 返回: 成功返回0，失败返回-1
- * IN  : mqdes      消息队列描述符
- * 说明: mq_close()会自动删除消息通知注册。
+ * @brief   关闭消息队列
+ * @param   mqdes [IN] 消息队列描述符
+ * @return  成功返回0，失败返回-1
+ * @note    mq_close()会自动删除消息通知注册。
  */
 int mq_close(mqd_t mqdes);
 ```
@@ -2491,9 +2619,9 @@ int mq_close(mqd_t mqdes);
 
 ```c
 /*
- * 功能: 删除消息队列
- * 返回: 成功返回0，失败返回-1
- * IN  : name       路径名
+ * @brief   删除消息队列
+ * @param   name [IN] 路径名
+ * @return  成功返回0，失败返回-1
  */
 int mq_unlink(const char *name);
 ```
@@ -2502,14 +2630,14 @@ int mq_unlink(const char *name);
 
 ```c
 /*
- * 功能: 发送消息
- * 返回: 成功返回0，失败返回-1
- * IN  : mqdes      消息队列描述符
- * IN  : msg_ptr    要发送的消息的缓冲区
- * IN  : msg_len    要发送的消息的长度
- * IN  : msg_prio   要发送的消息的优先级，正整数，0的优先最高，
- * IN  : abs_timeout超时时间 s+ns
- * 说明: 优先级高的消息放在前面，相同优先级的消息先发送的放在前面。
+ * @brief   发送消息
+ * @param   mqdes       [IN] 消息队列描述符
+ * @param   msg_ptr     [IN] 要发送的消息的缓冲区
+ * @param   msg_len     [IN] 要发送的消息的长度
+ * @param   msg_prio    [IN] 要发送的消息的优先级，正整数，0的优先最高
+ * @param   abs_timeout [IN] 超时时间 s+ns
+ * @return  成功返回0，失败返回-1
+ * @note    优先级高的消息放在前面，相同优先级的消息先发送的放在前面。
  */
 int mq_send(mqd_t mqdes, const char *msg_ptr, size_t msg_len, unsigned int msg_prio);
 int mq_timedsend(mqd_t mqdes, const char *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct timespec *abs_timeout);
@@ -2519,14 +2647,14 @@ int mq_timedsend(mqd_t mqdes, const char *msg_ptr, size_t msg_len, unsigned int 
 
 ```c
 /*
- * 功能: 接收消息
- * 返回: 成功返回0，失败返回-1
- * IN  : mqdes      消息队列描述符
- * OUT : msg_ptr    接受到消息的存放的缓冲区
- * IN  : msg_len    缓冲区长度，必须大于等于最大消息长度，否则EMSGSIZE错误
- * OUT : msg_prio   接受到消息的优先级复制到这里，可以为NULL
- * IN  : abs_timeout超时时间 s+ns
- * 说明: 接受到的是最前面的一条消息。
+ * @brief   接收消息
+ * @param   mqdes       [IN] 消息队列描述符
+ * @param   msg_ptr     [OUT] 接受到消息的存放的缓冲区
+ * @param   msg_len     [IN] 缓冲区长度，必须大于等于最大消息长度，否则EMSGSIZE错误
+ * @param   msg_prio    [OUT] 接受到消息的优先级复制到这里，可以为NULL
+ * @param   abs_timeout [IN] 超时时间 s+ns
+ * @return  成功返回读取字节数，失败返回-1
+ * @note    接受到的是最前面的一条消息。
  */
 ssize_t mq_receive(mqd_t mqdes, char *msg_ptr, size_t msg_len, unsigned int *msg_prio);
 ssize_t mq_timedreceive(mqd_t mqdes, char *msg_ptr, size_t msg_len, unsigned int *msg_prio, const struct timespec *abs_timeout);
@@ -2536,15 +2664,15 @@ ssize_t mq_timedreceive(mqd_t mqdes, char *msg_ptr, size_t msg_len, unsigned int
 
 ```c
 /*
- * 功能: 注册接收通知
- * 返回: 成功返回0，失败返回-1
- * IN  : mqdes      消息队列描述符
- * IN  : notification   对消息队列的通知方式
- * 说明: 1.只有一个进程能注册消息通知。已有一个进程注册消息通知时，后续注册消息通知时会返回EBUSY错误。
- * 2.只有一条新消息进入之前为空的队列时才会向注册进程发送通知，新消息进入之前有消息的队列不会向注册进程发送通知。
- * 3.其它进程mq_receive()阻塞时，一条新消息进入之前为空的队列时不会向注册进程发送通知，优先处理接收消息。
- * 4.向注册进程发送通知后，会删除注册进程的注册消息。
- * 5.注册进程注册消息通知后，运行mq_notify(mqdes,NULL)会删除注册消息
+ * @brief   注册接收通知
+ * @param   mqdes        [IN] 消息队列描述符
+ * @param   notification [IN] 对消息队列的通知方式
+ * @return  成功返回0，失败返回-1
+ * @note    1.只有一个进程能注册消息通知。已有一个进程注册消息通知时，后续注册消息通知时会返回EBUSY错误。
+ *          2.只有一条新消息进入之前为空的队列时才会向注册进程发送通知，新消息进入之前有消息的队列不会向注册进程发送通知。
+ *          3.其它进程mq_receive()阻塞时，一条新消息进入之前为空的队列时不会向注册进程发送通知，优先处理接收消息。
+ *          4.向注册进程发送通知后，会删除注册进程的注册消息。
+ *          5.注册进程注册消息通知后，运行mq_notify(mqdes,NULL)会删除注册消息
  */
 int mq_notify(mqd_t mqdes, const struct sigevent *notification);
 ```
@@ -2555,14 +2683,14 @@ int mq_notify(mqd_t mqdes, const struct sigevent *notification);
 
 ```c
 /*
- * 功能: 新建或打开信号量
- * 返回: 成功返回信号量指针sem_t*，失败返回-1
- * IN  : name       绝对文件路径名 /xxx，/dev/shm/目录出现sem.xxx文件
- * IN  : oflag      可以使用 O_CREAT O_EXCL，没有O_NONBLOCK O_RDONLY O_WRONLY O_RDWR
- * IN  : mode       权限，和文件I/O一样，但默认需要提供访问这个信号量的读写权限即666
- * IN  : value      信号量的初始值
- * 说明: 新建信号量需要mode和value，否则可以省略。
- * 不能为sem_t变量赋值，{sem_t *sp, sem; sp = sem_open(...); sem = *sp}结果未定义。
+ * @brief   新建或打开信号量
+ * @param   name  [IN] 绝对文件路径名 /xxx，/dev/shm/目录出现sem.xxx文件
+ * @param   oflag [IN] 可以使用 O_CREAT O_EXCL，没有O_NONBLOCK O_RDONLY O_WRONLY O_RDWR
+ * @param   mode  [IN] 权限，和文件I/O一样，但默认需要提供访问这个信号量的读写权限即666
+ * @param   value [IN] 信号量的初始值
+ * @return  成功返回信号量指针sem_t*，失败返回SEM_FAILED
+ * @note    新建信号量需要mode和value，否则可以省略。
+ *          不能为sem_t变量赋值，{sem_t *sp, sem; sp = sem_open(...); sem = *sp}结果未定义。
  */
 sem_t *sem_open(const char *name, int oflag, .../* mode_t mode, unsigned int value */ );
 ```
@@ -2571,10 +2699,10 @@ sem_t *sem_open(const char *name, int oflag, .../* mode_t mode, unsigned int val
 
 ```c
 /*
- * 功能: 关闭信号量
- * 返回: 成功返回0，失败返回-1
- * IN  : sem        信号量指针
- * 说明: mq_close()会自动删除消息通知注册。
+ * @brief   关闭信号量
+ * @param   sem [IN] 信号量指针
+ * @return  成功返回0，失败返回-1
+ * @note    sem_close()不会删除信号量，需要sem_unlink()删除。
  */
 int sem_close(sem_t *sem);
 ```
@@ -2583,9 +2711,9 @@ int sem_close(sem_t *sem);
 
 ```c
 /*
- * 功能: 删除信号量
- * 返回: 成功返回0，失败返回-1
- * IN  : name       信号量路径名
+ * @brief   删除信号量
+ * @param   name [IN] 信号量路径名
+ * @return  成功返回0，失败返回-1
  */
 int sem_unlink(const char *name);
 ```
@@ -2594,10 +2722,12 @@ int sem_unlink(const char *name);
 
 ```c
 /*
- * 功能: 等待一个信号量(值-1)
- * 返回: 成功返回0，失败返回-1
- * 说明: 当前信号量的值大于0时，sem_wait()会使信号量的值-1并立即成功返回，否则阻塞或报错。
- * 阻塞的sem_wait()调用会被信号处理器中断，此时失败返回EINTR错误
+ * @brief   等待一个信号量(值-1)
+ * @param   sem         [IN] 信号量指针
+ * @param   abs_timeout [IN] sem_timedwait超时时间
+ * @return  成功返回0，失败返回-1
+ * @note    当前信号量的值大于0时，sem_wait()会使信号量的值-1并立即成功返回，否则阻塞或报错。
+ *          阻塞的sem_wait()调用会被信号处理器中断，此时失败返回EINTR错误
  */
 int sem_wait(sem_t *sem);
 int sem_trywait(sem_t *sem);
@@ -2608,9 +2738,10 @@ int sem_timedwait(sem_t *sem, const struct timespec *abs_timeout);
 
 ```c
 /*
- * 功能: 发布一个信号量(值+1)
- * 返回: 成功返回0，失败返回-1
- * 说明: 当前信号量值为0并且有阻塞的sem_wait()调用进程时，sem_post()会唤醒一条(优先级最高等待时间最长的)进程。
+ * @brief   发布一个信号量(值+1)
+ * @param   sem [IN] 信号量指针
+ * @return  成功返回0，失败返回-1
+ * @note    当前信号量值为0并且有阻塞的sem_wait()调用进程时，sem_post()会唤醒一条(优先级最高等待时间最长的)进程。
  */
 int sem_post(sem_t *sem);
 ```
@@ -2619,12 +2750,12 @@ int sem_post(sem_t *sem);
 
 ```c
 /*
- * 功能: 获取信号量的当前值
- * 返回: 成功返回0，失败返回-1
- * IN  : sem        信号量指针
- * OUT : sval       获取的信号量的值
- * 说明: 有阻塞的sem_wait()调用时，返回的sval的值是0(Linux)或等待者数目的负数，取决于实现。
- * 获取sval的值可能你再使用的时候就已经过时了。
+ * @brief   获取信号量的当前值
+ * @param   sem  [IN] 信号量指针
+ * @param   sval [OUT] 获取的信号量的值
+ * @return  成功返回0，失败返回-1
+ * @note    有阻塞的sem_wait()调用时，返回的sval的值是0(Linux)或等待者数目的负数，取决于实现。
+ *          获取sval的值可能你再使用的时候就已经过时了。
  */
 int sem_getvalue(sem_t *sem, int *sval);
 ```
@@ -2633,13 +2764,13 @@ int sem_getvalue(sem_t *sem, int *sval);
 
 ```c
 /*
- * 功能: 初始化未命名信号量
- * 返回: 成功返回0，失败返回-1
- * IN  : sem        信号量指针
- * IN  : pshared    共享类型: 0，线程间共享; 非0，进程间共享。有些实现不支持进程间共享。
- * IN  : value      信号量的初始值
- * 说明: 线程间共享的sem是全局变量或堆变量的地址，具有进程持久性。
- * 进程间共享的sem是共享内存区域(共享内存、内存映射)的地址，持久性和共享内存区域一致。
+ * @brief   初始化未命名信号量
+ * @param   sem     [IN] 信号量指针
+ * @param   pshared [IN] 共享类型: 0，线程间共享; 非0，进程间共享。有些实现不支持进程间共享
+ * @param   value   [IN] 信号量的初始值
+ * @return  成功返回0，失败返回-1
+ * @note    线程间共享的sem是全局变量或堆变量的地址，具有进程持久性。
+ *          进程间共享的sem是共享内存区域(共享内存、内存映射)的地址，持久性和共享内存区域一致。
  */
 int sem_init(sem_t *sem, int pshared, unsigned int value);
 ```
@@ -2648,10 +2779,10 @@ int sem_init(sem_t *sem, int pshared, unsigned int value);
 
 ```c
 /*
- * 功能: 销毁未命名信号量
- * 返回: 成功返回0，失败返回-1
- * IN  : sem        信号量指针
- * 说明: 必须不存在进程或线程等待一个信号量时才能安全地销毁未命名信号量。
+ * @brief   销毁未命名信号量
+ * @param   sem [IN] 信号量指针
+ * @return  成功返回0，失败返回-1
+ * @note    必须不存在进程或线程等待一个信号量时才能安全地销毁未命名信号量。
  */
 int sem_destroy(sem_t *sem);
 ```
@@ -2662,15 +2793,15 @@ int sem_destroy(sem_t *sem);
 
 ```c
 /*
- * 功能: 新建或打开共享内存
- * 返回: 成功返回共享内存文件描述符，失败返回-1
- * IN  : name       绝对文件路径名 /xxx，/dev/shm/目录会创建xxx的文件
- * IN  : oflag      可以使用 O_CREAT O_EXCL O_TRUNC O_RDONLY O_RDWR，没有O_WRONLY
- * IN  : mode       权限，总是需要，没有O_CREAT标志时该值可以为0
- * 说明: 默认存在close_on_exec标记，新共享内存创建时其初始长度为0。
- * 可以使用ftruncate()来改变共享内存长度。新增加的长度会默认初始化为0。
- * 后续可以使用文件I/O函数对共享内存文件描述符进行操作。
- * 常用方法是shm_open打开一个共享内存，mmap将文件描述符映射到内存地址，关闭文件描述符，对映射的内存地址进行操作，删除映射的内存。
+ * @brief   新建或打开共享内存
+ * @param   name  [IN] 绝对文件路径名 /xxx，/dev/shm/目录会创建xxx的文件
+ * @param   oflag [IN] 可以使用 O_CREAT O_EXCL O_TRUNC O_RDONLY O_RDWR，没有O_WRONLY
+ * @param   mode  [IN] 权限，总是需要，没有O_CREAT标志时该值可以为0
+ * @return  成功返回共享内存文件描述符，失败返回-1
+ * @note    默认存在close_on_exec标记，新共享内存创建时其初始长度为0。
+ *          可以使用ftruncate()来改变共享内存长度。新增加的长度会默认初始化为0。
+ *          后续可以使用文件I/O函数对共享内存文件描述符进行操作。
+ *          常用方法是shm_open打开一个共享内存，mmap将文件描述符映射到内存地址，关闭文件描述符，对映射的内存地址进行操作，删除映射的内存。
  */
 int shm_open(const char *name, int oflag, mode_t mode);
 ```
@@ -2679,10 +2810,10 @@ int shm_open(const char *name, int oflag, mode_t mode);
 
 ```c
 /*
- * 功能: 删除共享内存名字
- * 返回: 成功返回0，失败返回-1
- * IN  : name       共享内存路径名
- * 说明: 默认存在close_on_exec标记，新共享内存创建时其初始长度为0。
+ * @brief   删除共享内存名字
+ * @param   name [IN] 共享内存路径名
+ * @return  成功返回0，失败返回-1
+ * @note    shm_unlink删除名字后，已映射的进程仍可继续使用，直到所有进程解除映射。
  */
 int shm_unlink(const char *name);
 ```
@@ -2701,33 +2832,37 @@ int shm_unlink(const char *name);
 
 ```c
 /*
- * 功能: 新建内存映射
- * 返回: 成功返回被映射区的起始地址，失败返回MAP_FAILED
- * IN  : addr       指定调用进程内被映射区的起始地址，通常设为NULL，由系统决定映射区的起始地址
- * IN  : len        映射到调用进程地址空间中的字节数，从offset算起。
- * IN  : prot       权限: PROT_READ(可读) PROT_WRITE(可写) PROT_EXEC(可执行) PROT_NONE(无法访问)
- * IN  : flags      变动共享状态: MAP_SHARED(变动共享) MAP_PRIVATE(变动私有) MAP_FIXED(准确解释addr)
- * IN  : fd         映射的文件
- * IN  : offset     偏移量，一般写成0
- * 说明: 将一个文件或一个POSIX共享内存对象映射到调用进程的地址空间，不能映射终端和套接字的文件描述符。
- * 违反prot保护的操作会触发SIGSEGV信号。PROT_NONE通常作为起始或结束位置的保护分页。
- * MAP_SHARED，变更对其它MAP_SHARED进程可见，变更是会同步到文件; MAP_PRIVATE，变更对其它进程不可见，变更会被丢弃。
- * 可能根据addr自动上舍入到分页对齐地址返回; len不必是分页大小的倍数，但内核会以分页大小创建内存映射。
- * 分页对齐(某些实现不要求): offset是分页大小倍数; 指定了MAP_FIXED，要求addr分页对齐; 指定了MAP_FIXED，要求addr和offset除以分页大小的余数相同。
- * 创建匿名映射有两种方法: fd传入打开的/dev/zero设备的文件描述符; fd传入-1，并flags指定MAP_ANONYMOUS
+ * @brief   新建内存映射
+ * @param   addr   [IN] 指定调用进程内被映射区的起始地址，通常设为NULL，由系统决定映射区的起始地址
+ * @param   len    [IN] 映射到调用进程地址空间中的字节数，从offset算起
+ * @param   prot   [IN] 权限: PROT_READ(可读) PROT_WRITE(可写) PROT_EXEC(可执行) PROT_NONE(无法访问)
+ * @param   flags  [IN] 变动共享状态: MAP_SHARED(变动共享) MAP_PRIVATE(变动私有) MAP_FIXED(准确解释addr)
+ * @param   fd     [IN] 映射的文件
+ * @param   offset [IN] 偏移量，一般写成0
+ * @return  成功返回被映射区的起始地址，失败返回MAP_FAILED
+ * @note    将一个文件或一个POSIX共享内存对象映射到调用进程的地址空间，不能映射终端和套接字的文件描述符。
+ *          违反prot保护的操作会触发SIGSEGV信号。PROT_NONE通常作为起始或结束位置的保护分页。
+ *          MAP_SHARED，变更对其它MAP_SHARED进程可见，变更是会同步到文件; MAP_PRIVATE，变更对其它进程不可见，变更会被丢弃。
+ *          可能根据addr自动上舍入到分页对齐地址返回; len不必是分页大小的倍数，但内核会以分页大小创建内存映射。
+ *          分页对齐(某些实现不要求): offset是分页大小倍数; 指定了MAP_FIXED，要求addr分页对齐; 指定了MAP_FIXED，要求addr和offset除以分页大小的余数相同。
+ *          创建匿名映射有两种方法: fd传入打开的/dev/zero设备的文件描述符; fd传入-1，并flags指定MAP_ANONYMOUS
  */
-void *mmap(void *addr, size_t len, int prot, int flags, in fd, off_t offset);
+void *mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset);
 ```
 
 ### mremap - 重新内存映射(Linux专有)
 
 ```c
 /*
- * 功能: 重新内存映射(Linux专有)
- * 返回: 成功返回被映射区的起始地址(可能与old_addr不同)，失败返回MAP_FAILED
- * IN  : flags      映射选项: MREMAP_MAYMOVE MREMAP_FIXED
- *        MREMAP_MAYMOVE   如果未指定此选项时，并且当前位置没有足够空间扩展，返回ENOMEM错误。
- *        MREMAP_MAYMOVE | MREMAP_FIXED  指定此选项组合时，在new_addr处重新映射。
+ * @brief   重新内存映射(Linux专有)
+ * @param   old_addr [IN] 原映射起始地址
+ * @param   old_len  [IN] 原映射大小
+ * @param   new_len  [IN] 新映射大小
+ * @param   flags    [IN] 映射选项: MREMAP_MAYMOVE MREMAP_FIXED
+ * @param   new_addr [IN] MREMAP_FIXED时指定的新地址
+ * @return  成功返回被映射区的起始地址(可能与old_addr不同)，失败返回MAP_FAILED
+ * @note    MREMAP_MAYMOVE   如果未指定此选项时，并且当前位置没有足够空间扩展，返回ENOMEM错误。
+ *          MREMAP_MAYMOVE | MREMAP_FIXED  指定此选项组合时，在new_addr处重新映射。
  */
 void *mremap(void *old_addr, size_t old_len, size_t new_len, int flags, .../* void *new_addr */);
 ```
@@ -2736,12 +2871,12 @@ void *mremap(void *old_addr, size_t old_len, size_t new_len, int flags, .../* vo
 
 ```c
 /*
- * 功能: 解除内存映射
- * 返回: 成功返回0，失败返回-1
- * IN  : addr       被映射区的起始地址，必须分页对齐
- * IN  : len        被映射区的字节数，会上舍入到分页倍数大小
- * 说明: 解除不是映射的地址会返回0。可以解除部分映射区。访问解除了的映射的地址区间会触发SIGSEGV信号。
- * 解除映射会删除进程持有的在指定地址范围内的内存锁。解除映射前需要调用msync()。
+ * @brief   解除内存映射
+ * @param   addr [IN] 被映射区的起始地址，必须分页对齐
+ * @param   len  [IN] 被映射区的字节数，会上舍入到分页倍数大小
+ * @return  成功返回0，失败返回-1
+ * @note    解除不是映射的地址会返回0。可以解除部分映射区。访问解除了的映射的地址区间会触发SIGSEGV信号。
+ *          解除映射会删除进程持有的在指定地址范围内的内存锁。解除映射前需要调用msync()。
  */
 int munmap(void *addr, size_t len);
 ```
@@ -2750,12 +2885,12 @@ int munmap(void *addr, size_t len);
 
 ```c
 /*
- * 功能: 强制同步内存映射到文件
- * 返回: 成功返回0，失败返回-1
- * IN  : addr       被映射区的起始地址，必须分页对齐
- * IN  : len        被映射区的字节数
- * IN  : flags      同步模式: MS_ASYNC(异步写) MS_SYNC(同步写) MS_INVALIDATE(使高速缓存数据失效)
- * 说明: MS_ASYNC(异步写)立即返回，MS_SYNC(同步写)等写操作完成才返回。
+ * @brief   强制同步内存映射到文件
+ * @param   addr  [IN] 被映射区的起始地址，必须分页对齐
+ * @param   len   [IN] 被映射区的字节数
+ * @param   flags [IN] 同步模式: MS_ASYNC(异步写) MS_SYNC(同步写) MS_INVALIDATE(使高速缓存数据失效)
+ * @return  成功返回0，失败返回-1
+ * @note    MS_ASYNC(异步写)立即返回，MS_SYNC(同步写)等写操作完成才返回。
  */
 int msync(void *addr, size_t len, int flags);
 ```
@@ -2764,11 +2899,11 @@ int msync(void *addr, size_t len, int flags);
 
 ```c
 /*
- * 功能: 修改内存保护模式
- * 返回: 成功返回0，失败返回-1
- * IN  : addr       内存的起始地址，必须分页对齐
- * IN  : len        内存的字节数，上舍到分页大小的整数倍
- * IN  : flags      权限: PROT_READ(可读) PROT_WRITE(可写) PROT_EXEC(可执行) PROT_NONE(无法访问)
+ * @brief   修改内存保护模式
+ * @param   addr [IN] 内存的起始地址，必须分页对齐
+ * @param   len  [IN] 内存的字节数，上舍到分页大小的整数倍
+ * @param   prot [IN] 权限: PROT_READ(可读) PROT_WRITE(可写) PROT_EXEC(可执行) PROT_NONE(无法访问)
+ * @return  成功返回0，失败返回-1
  */
 int mprotect(void *addr, size_t len, int prot);
 ```
@@ -2777,13 +2912,13 @@ int mprotect(void *addr, size_t len, int prot);
 
 ```c
 /*
- * 功能: 内存加解锁
- * 返回: 成功返回0，失败返回-1
- * IN  : addr       内存的起始地址
- * IN  : len        内存的字节数
- * 说明: 内存锁的作用是将一块虚拟进程区域锁进物理内存，从而防止他被交换出去，以提高性能。
- * 特权进程能够锁住的内存数量没有限制，非特权进程限制为RLIMIT_MEMLOCK(默认8个分页)
- * 内存锁不会在fork()中继承，多次lock不会叠加
+ * @brief   内存加解锁
+ * @param   addr [IN] 内存的起始地址
+ * @param   len  [IN] 内存的字节数
+ * @return  成功返回0，失败返回-1
+ * @note    内存锁的作用是将一块虚拟进程区域锁进物理内存，从而防止他被交换出去，以提高性能。
+ *          特权进程能够锁住的内存数量没有限制，非特权进程限制为RLIMIT_MEMLOCK(默认8个分页)
+ *          内存锁不会在fork()中继承，多次lock不会叠加
  */
 int mlock(void *addr, size_t len);
 int munlock(void *addr, size_t len);
@@ -2793,9 +2928,9 @@ int munlock(void *addr, size_t len);
 
 ```c
  /*
- * 功能: 进程的所有内存加解锁
- * 返回: 成功返回0，失败返回-1
- * IN  : flags      选项标志: MCL_CURRENT(当前的映射加锁) MCL_FUTURE(后续的映射也加锁)
+ * @brief   进程的所有内存加解锁
+ * @param   flags [IN] 选项标志: MCL_CURRENT(当前的映射加锁) MCL_FUTURE(后续的映射也加锁)
+ * @return  成功返回0，失败返回-1
  */
 int mlockall(int flags);
 int munlockall(void);
@@ -2805,11 +2940,11 @@ int munlockall(void);
 
 ```c
  /*
- * 功能: 确定内存驻留性
- * 返回: 成功返回0，失败返回-1
- * IN  : addr       内存的起始地址，必须分页对齐
- * IN  : len        内存的字节数，上舍到分页大小的整数倍
- * OUT : vec        驻留状态，大小为分页页数，使用最低有效位判断是否驻留在内存中
+ * @brief   确定内存驻留性
+ * @param   addr [IN] 内存的起始地址，必须分页对齐
+ * @param   len  [IN] 内存的字节数，上舍到分页大小的整数倍
+ * @param   vec  [OUT] 驻留状态，大小为分页页数，使用最低有效位判断是否驻留在内存中
+ * @return  成功返回0，失败返回-1
  */
 int mincore(void *addr, size_t len, unsigned char *vec);
 ```
@@ -2818,11 +2953,11 @@ int mincore(void *addr, size_t len, unsigned char *vec);
 
 ```c
  /*
- * 功能: 建议后续内存的使用模式
- * 返回: 成功返回0，失败返回-1
- * IN  : addr       内存的起始地址，必须分页对齐
- * IN  : len        内存的字节数，上舍到分页大小的整数倍
- * OUT : advice     使用建议，默认行为是MADV_MORMAL
+ * @brief   建议后续内存的使用模式
+ * @param   addr   [IN] 内存的起始地址，必须分页对齐
+ * @param   len    [IN] 内存的字节数，上舍到分页大小的整数倍
+ * @param   advice [IN] 使用建议，默认行为是MADV_NORMAL
+ * @return  成功返回0，失败返回-1
  */
 int madvise(void *addr, size_t len, int advice);
 ```
@@ -2839,17 +2974,17 @@ int madvise(void *addr, size_t len, int advice);
 
 ```c
  /*
- * 功能: 整个文件加锁(BSD)
- * 返回: 成功返回0，失败返回-1
- * IN  : fd         文件描述符
- * IN  : operation  加锁方式: LOCK_SH(共享锁) LOCK_EX(互斥锁) LOCK_UN(解锁) LOCK_NB(非阻塞锁)
- * 说明: LOCK_SH(共享锁) LOCK_EX(互斥锁) 的使用类似读写锁
- * 同一个进程可以再次flock直接转换 LOCK_SH(共享锁)，LOCK_EX(互斥锁），转换过程先释放旧锁，再创建新锁，转换不是原子的。
- * 文件锁与文件描述符相关联，文件描述符被关闭后锁会自动释放(需要关闭此进程所有打开同一个文件的描述符)。
- * 文件描述符被复制dup()后新的文件描述符会引用同一个文件锁, 解锁时解锁一次就可以。
- * 文件描述符被fork()后子进程的文件描述符会引用同一个文件锁, 解锁子进程文件锁父进程也会解锁。锁在exec()会被保留。
- * 进程再次打开同一个文件，加锁新的文件描述符会新建一个新的文件锁。如果对前面的文件描述符加了锁，对新的文件描述符加锁会阻塞。
- * flock只能放置劝告式锁，很多NFS实现不支持flock()放置的锁。
+ * @brief   整个文件加锁(BSD)
+ * @param   fd        [IN] 文件描述符
+ * @param   operation [IN] 加锁方式: LOCK_SH(共享锁) LOCK_EX(互斥锁) LOCK_UN(解锁) LOCK_NB(非阻塞锁)
+ * @return  成功返回0，失败返回-1
+ * @note    LOCK_SH(共享锁) LOCK_EX(互斥锁) 的使用类似读写锁
+ *          同一个进程可以再次flock直接转换 LOCK_SH(共享锁)，LOCK_EX(互斥锁），转换过程先释放旧锁，再创建新锁，转换不是原子的。
+ *          文件锁与文件描述符相关联，文件描述符被关闭后锁会自动释放(需要关闭此进程所有打开同一个文件的描述符)。
+ *          文件描述符被复制dup()后新的文件描述符会引用同一个文件锁, 解锁时解锁一次就可以。
+ *          文件描述符被fork()后子进程的文件描述符会引用同一个文件锁, 解锁子进程文件锁父进程也会解锁。锁在exec()会被保留。
+ *          进程再次打开同一个文件，加锁新的文件描述符会新建一个新的文件锁。如果对前面的文件描述符加了锁，对新的文件描述符加锁会阻塞。
+ *          flock只能放置劝告式锁，很多NFS实现不支持flock()放置的锁。
  */
  int flock(int fd, int operation);
 ```
@@ -2858,18 +2993,18 @@ int madvise(void *addr, size_t len, int advice);
 
 ```c
  /*
- * 功能: 记录加锁(文件部分加锁(SYSV POSIX)
- * 返回: 成功取决于cmd，失败返回-1
- * IN  : fd         文件描述符
- * IN  : cmd        命令模式 F_SETLK(非阻塞锁, EAGAIN或EACESS错误) F_SETLKW(阻塞锁) F_GETLK(检测是否可以获得锁)
- * IN  : arg        参数缓存
- * 说明: 可以对未加锁的文件区域解锁，也会返回成功
- * 同一个进程可以再次fcntl直接转换加锁方式(F_RDLCK, F_WRLCK)，转换过程先释放旧锁，再创建新锁，转换是原子的。
- * 无法对文件区域之外加锁。
- * 已有锁与新键的不同模式的锁严格完全包含，会产生三把锁。已有锁与新键的不同模式的锁部分重合会产生两把锁(已有锁截断重合部分)。
- * 已有锁与与新键的相同同模式的锁包含或重合会合并为一般大锁。
- * 记录锁与进程和i-node相关联。一个进程的所有线程共享一组记录锁，fork()子进程不会继承锁，锁在exec()会被保留。
- * 启用强制加锁 $ chmod g+s,g-x file，有些文件系统不支持。劝告式锁指进程可以不加锁访问其它进程加锁了的文件，强制加锁不能。
+ * @brief   记录加锁(文件部分加锁(SYSV POSIX)
+ * @param   fd  [IN] 文件描述符
+ * @param   cmd [IN] 命令模式 F_SETLK(非阻塞锁, EAGAIN或EACESS错误) F_SETLKW(阻塞锁) F_GETLK(检测是否可以获得锁)
+ * @param   arg [IN] 参数缓存(struct flock)
+ * @return  成功取决于cmd，失败返回-1
+ * @note    可以对未加锁的文件区域解锁，也会返回成功
+ *          同一个进程可以再次fcntl直接转换加锁方式(F_RDLCK, F_WRLCK)，转换过程先释放旧锁，再创建新锁，转换是原子的。
+ *          无法对文件区域之外加锁。
+ *          已有锁与新键的不同模式的锁严格完全包含，会产生三把锁。已有锁与新键的不同模式的锁部分重合会产生两把锁(已有锁截断重合部分)。
+ *          已有锁与与新键的相同同模式的锁包含或重合会合并为一般大锁。
+ *          记录锁与进程和i-node相关联。一个进程的所有线程共享一组记录锁，fork()子进程不会继承锁，锁在exec()会被保留。
+ *          启用强制加锁 $ chmod g+s,g-x file，有些文件系统不支持。劝告式锁指进程可以不加锁访问其它进程加锁了的文件，强制加锁不能。
  */
 struct flock {
     short           l_type;     /* Lock type: F_RDLCK, F_WRLCK, F_UNLCK */
@@ -2901,12 +3036,13 @@ int fcntl(int fd, int cmd, ... /* struct flock *arg */);
 
 ```c
 /*
- * 功能: 互斥量初始化和销毁
- * 返回: 0，成功; >0，失败
- * IN  : attr       定义互斥量的属性，NULL为默认
- * 说明: PTHREAD_MUTEX_INITIALIZER  对静态分配的互斥量默认属性初始化
- *       pthread_mutex_init         动态初始化互斥量，栈或堆中的互斥量或不是默认属性的互斥量必须动态初始化
- *       pthread_mutex_destroy      销毁动态初始化的互斥量，静态分配的互斥量不需要显示destroy
+ * @brief   互斥量初始化和销毁
+ * @param   mutex [IN] 互斥量指针
+ * @param   attr  [IN] 定义互斥量的属性，NULL为默认
+ * @return  0，成功; >0，失败
+ * @note    PTHREAD_MUTEX_INITIALIZER  对静态分配的互斥量默认属性初始化
+ *          pthread_mutex_init         动态初始化互斥量，栈或堆中的互斥量或不是默认属性的互斥量必须动态初始化
+ *          pthread_mutex_destroy      销毁动态初始化的互斥量，静态分配的互斥量不需要显示destroy
  */
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
@@ -2917,14 +3053,15 @@ int pthread_mutex_destroy(pthread_mutex_t *mutex);
 
 ```c
 /*
- * 功能: 互斥量加解锁
- * 返回: 0，成功; >0，失败
- * IN  : tsptr      秒和纳秒描述时间
- * 说明: 对未锁定的互斥量加锁将直接锁定该互斥量并返回0
- *       lock       加锁互斥量，对已被加锁的互斥量加锁将导致线程阻塞直到该互斥量被解锁
- *       trylock    加锁互斥量，对已被加锁的互斥量加锁不会导致线程阻塞，直接返回EBUSY错误
- *       timedlock  加锁互斥量，超时未获取锁返回ETIMEDOUT错误
- *       unlock     解锁互斥量
+ * @brief   互斥量加解锁
+ * @param   mutex [IN] 互斥量指针
+ * @param   tsptr [IN] timedlock超时时间(秒和纳秒)
+ * @return  0，成功; >0，失败
+ * @note    对未锁定的互斥量加锁将直接锁定该互斥量并返回0
+ *          lock       加锁互斥量，对已被加锁的互斥量加锁将导致线程阻塞直到该互斥量被解锁
+ *          trylock    加锁互斥量，对已被加锁的互斥量加锁不会导致线程阻塞，直接返回EBUSY错误
+ *          timedlock  加锁互斥量，超时未获取锁返回ETIMEDOUT错误
+ *          unlock     解锁互斥量
  */
 int pthread_mutex_lock(pthread_mutex_t *mutex);
 int pthread_mutex_trylock(pthread_mutex_t *mutex);
@@ -2943,8 +3080,10 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex);
 
 ```c
 /*
- * 功能: 读写锁初始化和销毁
- * 返回: 0，成功; >0，失败
+ * @brief   读写锁初始化和销毁
+ * @param   rwlock [IN] 读写锁指针
+ * @param   attr   [IN] 读写锁属性，NULL为默认
+ * @return  0，成功; >0，失败
  */
 pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
 int pthread_rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr);
@@ -2955,9 +3094,11 @@ int pthread_rwlock_destroy(pthread_rwlock_t *rwlock);
 
 ```c
 /*
- * 功能: 读写锁加解锁
- * 返回: 0，成功; >0，失败
- * 说明: rdlock 读加锁，wrlock 写加锁，unlock 解锁。其它修饰类似互斥锁。
+ * @brief   读写锁加解锁
+ * @param   rwlock [IN] 读写锁指针
+ * @param   tsptr  [IN] timedlock超时时间
+ * @return  0，成功; >0，失败
+ * @note    rdlock 读加锁，wrlock 写加锁，unlock 解锁。其它修饰类似互斥锁。
  */
 int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
 int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
@@ -2979,9 +3120,10 @@ int pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
 
 ```c
 /*
- * 功能: 条件变量初始化和销毁
- * 返回: 0，成功; >0，失败
- * 说明: attr为NULL时，取默认值
+ * @brief   条件变量初始化和销毁
+ * @param   cond [IN] 条件变量指针
+ * @param   attr [IN] 条件变量属性，attr为NULL时，取默认值
+ * @return  0，成功; >0，失败
  */
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr);
@@ -2992,8 +3134,11 @@ int pthread_cond_destroy(pthread_cond_t *cond);
 
 ```c
 /*
- * 功能: 条件变量发送和等待
- * 返回: 0，成功; >0，失败
+ * @brief   条件变量发送和等待
+ * @param   cond  [IN] 条件变量指针
+ * @param   mutex [IN] 关联的互斥量指针
+ * @param   tsptr [IN] timedwait超时时间
+ * @return  0，成功; >0，失败
  */
 int pthread_cond_signal(pthread_cond_t *cond);
 int pthread_cond_broadcast(pthread_cond_t *cond);
@@ -3027,11 +3172,12 @@ pthread_mutex_unlock(&mtx);
 
 ```c
 /*
- * 功能: 自旋锁初始化和销毁
- * 返回: 0，成功; >0，失败
- * IN  : pshared    线程进程共享同步
- *                  PTHREAD_PROCESS_SHARED  自旋锁能被可以访问锁底层内存的线程访问，即使线程属于不同的进程
- *                  PTHREAD_PROCESS_PRIVATE 自旋锁只能被初始化该锁的进程的线程访问
+ * @brief   自旋锁初始化和销毁
+ * @param   lock    [IN] 自旋锁指针
+ * @param   pshared [IN] 线程进程共享同步
+ *                        PTHREAD_PROCESS_SHARED  自旋锁能被可以访问锁底层内存的线程访问，即使线程属于不同的进程
+ *                        PTHREAD_PROCESS_PRIVATE 自旋锁只能被初始化该锁的进程的线程访问
+ * @return  0，成功; >0，失败
  */
 int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
 int pthread_spin_destroy(pthread_spinlock_t *lock);
@@ -3041,9 +3187,10 @@ int pthread_spin_destroy(pthread_spinlock_t *lock);
 
 ```c
 /*
- * 功能: 自旋锁加解锁
- * 返回: 0，成功; >0，失败
- * 说明: rdlock 读加锁，wrlock 写加锁，unlock 解锁。其它修饰类似互斥锁。
+ * @brief   自旋锁加解锁
+ * @param   lock [IN] 自旋锁指针
+ * @return  0，成功; >0，失败
+ * @note    lock 加锁，trylock 非阻塞加锁，unlock 解锁。
  */
 int pthread_spin_lock(pthread_spinlock_t *lock);
 int pthread_spin_trylock(pthread_spinlock_t *lock);
@@ -3059,10 +3206,12 @@ int pthread_spin_unlock(pthread_spinlock_t *lock);
 
 ```c
 /*
- * 功能: 屏障初始化和销毁
- * 返回: 0，成功; >0，失败
- * IN  : count      到达屏障点的最少数目。未满足计数时，到达屏障点的线程都会进入休眠; 满足计数时，唤醒所有线程。
- * 说明: restrict，C语言中的一种类型限定符，用于告诉编译器，对象已经被指针所引用，不能通过除该指针外所有其他直接或间接的方式修改该对象的内容。
+ * @brief   屏障初始化和销毁
+ * @param   barrier [IN] 屏障指针
+ * @param   attr    [IN] 屏障属性
+ * @param   count   [IN] 到达屏障点的最少数目。未满足计数时，到达屏障点的线程都会进入休眠; 满足计数时，唤醒所有线程
+ * @return  0，成功; >0，失败
+ * @note    restrict，C语言中的一种类型限定符，用于告诉编译器，对象已经被指针所引用，不能通过除该指针外所有其他直接或间接的方式修改该对象的内容。
  */
 int pthread_barrier_init(pthread_barrier_t *restrict barrier, const pthread_barrierattr_t *restrict attr, unsigned int count);
 int pthread_barrier_destroy(pthread_barrier_t *barrier);
@@ -3072,9 +3221,10 @@ int pthread_barrier_destroy(pthread_barrier_t *barrier);
 
 ```c
 /*
- * 功能: 设定屏障点
- * 返回: 0或PTHREAD_BARRIER_SERIAL_THREAD，成功; >0，失败
- * 说明: 一个任意线程会得到PTHREAD_BARRIER_SERIAL_THREAD返回，它作为主线程; 剩下的所有线程得到0返回
+ * @brief   设定屏障点
+ * @param   barrier [IN] 屏障指针
+ * @return  0或PTHREAD_BARRIER_SERIAL_THREAD，成功; >0，失败
+ * @note    一个任意线程会得到PTHREAD_BARRIER_SERIAL_THREAD返回，它作为主线程; 剩下的所有线程得到0返回
  */
 int pthread_barrier_wait(pthread_barrier_t *barrier);
 ```
@@ -3131,13 +3281,13 @@ $ kill -l
 
 ```c
 /*
- * 功能: 设置信号处理方式
- * 返回: 返回以前的信号处理函数，成功; SIG_ERR，失败
- * IN  : signum     信号编号
- * IN  : handler    信号处理函数，可选择：
- *                  函数地址 : 用户自定义信号处理函数
- *                  SIG_IGN : 忽略信号
- *                  SIG_DFT : 系统默认处理
+ * @brief   设置信号处理方式
+ * @param   signum  [IN] 信号编号
+ * @param   handler [IN] 信号处理函数，可选择：
+ *                        函数地址 : 用户自定义信号处理函数
+ *                        SIG_IGN : 忽略信号
+ *                        SIG_DFT : 系统默认处理
+ * @return  返回以前的信号处理函数，成功; SIG_ERR，失败
  */
 #include <signal.h>
 typedef void (*sighandler_t)(int);
@@ -3148,27 +3298,26 @@ sighandler_t signal(int signum, sighandler_t handler);
 
 ```c
 /*
- * 功能: 检查或修改指定信号的处理方式
- * 返回: 0，成功; -1，失败
- * IN  : signum     要操作的信号编号
- * IN  : act        要设置的对信号的新处理方式，可以为NULL
- * OUT : oldact     原来对信号的处理方式，可以为NULL
- *
- * struct sigaction 说明:
- * sa_handler       和signal()的参数handler相同，代表新的信号处理函数
- * sa_sigaction     新的信号处理函数，和 sa_handler 二选一
- * sa_mask          用来设置在处理该信号时暂时将 sa_mask 指定的信号集阻塞
- * sa_flags         用来设置信号处理的其他相关操作，如下：
- *  SA_RESTART      使被信号打断的系统调用自动重新发起。
- *  SA_NOCLDSTOP    使父进程在它的子进程暂停或继续运行时不会收到 SIGCHLD 信号
- *  SA_NOCLDWAIT    使父进程在它的子进程退出时不会收到 SIGCHLD 信号，这时子进程如果退出也不会成为僵尸进程
- *  SA_NODEFER      使对信号的屏蔽无效，即在信号处理函数执行期间仍能发出这个信号
- *  SA_RESETHAND    信号处理之后重新设置为默认的处理方式 SIG_DFL
- *  SA_SIGINFO      使用 sa_sigaction 成员而不是 sa_handler 作为信号处理函数
- * sa_restorer      废弃不用
- * 注：
- * 1. sa_handler主要用于不可靠信号（实时信号当然也可以，只是不能带信息）
- * 2. sa_sigaction用于实时信号可以带信息(siginfo_t)
+ * @brief   检查或修改指定信号的处理方式
+ * @param   signum [IN] 要操作的信号编号
+ * @param   act    [IN] 要设置的对信号的新处理方式，可以为NULL
+ * @param   oldact [OUT] 原来对信号的处理方式，可以为NULL
+ * @return  0，成功; -1，失败
+ * @note    struct sigaction 说明:
+ *          sa_handler       和signal()的参数handler相同，代表新的信号处理函数
+ *          sa_sigaction     新的信号处理函数，和 sa_handler 二选一
+ *          sa_mask          用来设置在处理该信号时暂时将 sa_mask 指定的信号集阻塞
+ *          sa_flags         用来设置信号处理的其他相关操作，如下：
+ *            SA_RESTART     使被信号打断的系统调用自动重新发起。
+ *            SA_NOCLDSTOP   使父进程在它的子进程暂停或继续运行时不会收到 SIGCHLD 信号
+ *            SA_NOCLDWAIT   使父进程在它的子进程退出时不会收到 SIGCHLD 信号，这时子进程如果退出也不会成为僵尸进程
+ *            SA_NODEFER     使对信号的屏蔽无效，即在信号处理函数执行期间仍能发出这个信号
+ *            SA_RESETHAND   信号处理之后重新设置为默认的处理方式 SIG_DFL
+ *            SA_SIGINFO     使用 sa_sigaction 成员而不是 sa_handler 作为信号处理函数
+ *          sa_restorer      废弃不用
+ *          注：
+ *          1. sa_handler主要用于不可靠信号（实时信号当然也可以，只是不能带信息）
+ *          2. sa_sigaction用于实时信号可以带信息(siginfo_t)
 */
 
 #include <signal.h>
@@ -3207,14 +3356,14 @@ int sigaction(int signum, const struct sigaction *act,
 
 ```c
 /*
- * 功能: 发送信号
- * 返回: 0，成功; -1，失败
- * IN  : pid        进程pid
-                    >0, 发送信号到特定进程;
-                    0, 发送信号到同一进程组的所有进程;
-                    -1, 发送信号到可以发送信号的所有进程
-                    <-1,发送信号到特定进程组的所有进程;
- * IN  : sig        信号编号，0时表示只检查错误不发送信号
+ * @brief   发送信号
+ * @param   pid [IN] 进程pid
+ *                  >0, 发送信号到特定进程;
+ *                  0, 发送信号到同一进程组的所有进程;
+ *                  -1, 发送信号到可以发送信号的所有进程
+ *                  <-1,发送信号到特定进程组的所有进程;
+ * @param   sig [IN] 信号编号，0时表示只检查错误不发送信号
+ * @return  0，成功; -1，失败
  */
 #include <sys/types.h>
 #include <signal.h>
@@ -3225,13 +3374,13 @@ int raise(int sig); // == kill(getpid(), sig);
 ### sigqueue - 发送信号，支持信号带有参数
 ```c
 /*
- * 功能: 发送信号，支持信号带有参数
- * 返回: 0，成功; -1，失败
- * IN  : pid        进程pid，只能向一个进程发送信号
-                    >0, 发送信号到特定进程;
- * IN  : sig        信号编号，0时表示只检查错误不发送信号
- * IN  : value
- * 设置信号处理方式是需要使用sigaction的sa_sigaction
+ * @brief   发送信号，支持信号带有参数
+ * @param   pid   [IN] 进程pid，只能向一个进程发送信号
+ *                    >0, 发送信号到特定进程;
+ * @param   sig   [IN] 信号编号，0时表示只检查错误不发送信号
+ * @param   value [IN] 信号附带的参数(union sigval)
+ * @return  0，成功; -1，失败
+ * @note    设置信号处理方式是需要使用sigaction的sa_sigaction
  */
 #include <sys/types.h>
 #include <signal.h>
@@ -3242,8 +3391,8 @@ int sigqueue(pid_t pid, int sig, const union sigval value);
 
 ```c
 /*
- * 功能: 发送SIGABRT信号使进程异常终止
- * 返回: 无
+ * @brief   发送SIGABRT信号使进程异常终止
+ * @return  无
  */
 #include <stdlib.h>
 void abort(void); // = raise(SIGABRT)
@@ -3253,9 +3402,9 @@ void abort(void); // = raise(SIGABRT)
 
 ```c
 /*
- * 功能: 超时向自己发送SIGALRM信号
- * 返回: 0 或 前面调用alarm剩余的秒数(每个进程只有一个闹钟时间)
- * IN  : seconds    超时秒数
+ * @brief   超时向自己发送SIGALRM信号
+ * @param   seconds [IN] 超时秒数
+ * @return  0 或 前面调用alarm剩余的秒数(每个进程只有一个闹钟时间)
  */
 #include <unistd.h>
 unsigned int alarm(unsigned int seconds);
@@ -3265,8 +3414,8 @@ unsigned int alarm(unsigned int seconds);
 
 ```c
 /*
- * 功能: 挂起进程直到捕捉到信号
- * 返回: 仅在捕获信号并返回信号捕获函数时返回
+ * @brief   挂起进程直到捕捉到信号
+ * @return  仅在捕获信号并返回信号捕获函数时返回-1，errno设置为EINTR
  */
 #include <unistd.h>
 int pause(void);
@@ -3276,11 +3425,11 @@ int pause(void);
 
 ```c
 /*
- * 功能: 信号集操作函数
- * 返回: 0，成功; -1，失败(sigismember例外)
- * sigismember: 1, 是信号集成员; 0，成功; -1，失败
- * IN  : set        要操作的信号集
- * IN  : signo      要操作的信号编号
+ * @brief   信号集操作函数
+ * @param   set   [INOUT] 要操作的信号集
+ * @param   signo [IN] 要操作的信号编号
+ * @return  0，成功; -1，失败(sigismember例外)
+ *          sigismember: 1, 是信号集成员; 0，不是; -1，失败
  */
 #include <signal.h>
 typedef struct {
@@ -3298,15 +3447,15 @@ int sigismember(const sigset_t* set, int signo);// 判断信号是否在set集�
 
 ```c
 /*
- * 功能: 读取或更改进程的阻塞信号集
- * 返回: 0，成功; -1，失败
- * IN  : how        要执行的操作
- *      SIG_BLOCK   set包含了我们希望添加到当前信号屏蔽字的信号（往里加）
- *      SIG_UNBLOCK set包含了我们希望从当前信号屏蔽字中解除阻塞的信号（往外减）
- *      SIG_SETMASK 设置当前信号屏蔽字为set所指向的值（重新设置）
- * IN  : set        要操作的信号集，可以为NULL
- * OUT : oldset     返回原来的阻塞信号集，可以为NULL
- * 说明: 如果在信号阻塞时将其发送给进程，那么该信号的传递就被推迟直到对它解除了阻塞。
+ * @brief   读取或更改进程的阻塞信号集
+ * @param   how    [IN] 要执行的操作
+ *                     SIG_BLOCK   set包含了我们希望添加到当前信号屏蔽字的信号（往里加）
+ *                     SIG_UNBLOCK set包含了我们希望从当前信号屏蔽字中解除阻塞的信号（往外减）
+ *                     SIG_SETMASK 设置当前信号屏蔽字为set所指向的值（重新设置）
+ * @param   set    [IN] 要操作的信号集，可以为NULL
+ * @param   oldset [OUT] 返回原来的阻塞信号集，可以为NULL
+ * @return  0，成功; -1，失败
+ * @note    如果在信号阻塞时将其发送给进程，那么该信号的传递就被推迟直到对它解除了阻塞。
  */
 
 #include <signal.h>
@@ -3317,9 +3466,9 @@ int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 
 ```c
 /*
- * 功能: 读取或更改进程的阻塞信号集
- * 返回: 0，成功; -1，失败
- * OUT : set        返回当前进程的未决信号集
+ * @brief   读取当前进程的未决信号集
+ * @param   set [OUT] 返回当前进程的未决信号集
+ * @return  0，成功; -1，失败
  */
 
 #include <signal.h>
@@ -3330,14 +3479,14 @@ int sigpending(sigset_t *set);
 
 ```c
 /*
- * 功能: 设置阻塞信号为mask，等待其他信号（除mask之外的信号）的发生，若信号发生且对应的handler已执行，则返回-1，并设置相应的errno(已发生的信号值）
- * 返回: 总是返回-1，并将errno设置为EINTR（表示一个被中断的系统调用）
- * IN  : mask           临时的进程掩码
- * sigsuspend实际是将sigprocmask和pause结合起来原子操作：
- * （1）设置新的mask阻塞当前进程
- * （2）收到临时的进程掩码的信号，阻塞，程序继续挂起；收到其他信号，恢复原先的掩码
- * （3）调用该进程设置的信号处理函数
- * （4）待信号处理函数返回，sigsuspend返回了
+ * @brief   设置当前进程的临时掩码并挂起
+ * @param   mask [IN] 临时的进程掩码
+ * @return  总是返回-1，并将errno设置为EINTR（表示一个被中断的系统调用）
+ * @note    sigsuspend实际是将sigprocmask和pause结合起来原子操作：
+ *          （1）设置新的mask阻塞当前进程
+ *          （2）收到临时的进程掩码的信号，阻塞，程序继续挂起；收到其他信号，恢复原先的掩码
+ *          （3）调用该进程设置的信号处理函数
+ *          （4）待信号处理函数返回，sigsuspend返回了
  */
 
 #include <signal.h>
@@ -3361,7 +3510,7 @@ int sigsuspend(const sigset_t *mask);
 iputils软件包是linux环境下一些实用的网络工具的集合。一开始由Alexey Kuznetsov维护。
 
 - iputils包含以下几个工具：
-  - `ping` 使用 ping可以测试计算机名和计算机的ip地址，验证与远程计算机的连接。ping程序由ping.c ping6.cping_common.c ping.h 文件构成
+  - `ping` 使用 ping可以测试计算机名和计算机的ip地址，验证与远程计算机的连接。ping程序由ping.c ping6.c ping_common.c ping.h 文件构成
   - `tracepath` 与traceroute功能相似，使用tracepath测试IP数据报文从源主机传到目的主机经过的路由。tracepath程序由tracepath.c tracepath6.c traceroute6.c 文件构成。
   - `arping` 使用arping向目的主机发送ARP报文，通过目的主机的IP获得该主机的硬件地址。arping程序由arping.c文件构成。
   - `tftpd`  tftpd是简单文件传送协议TFTP的服务端程序。tftpd程序由tftp.h tftpd.c tftpsubs.c文件构成。
@@ -3589,25 +3738,24 @@ struct sockaddr_in6
 ### socket - 创建socket
 
 ```c
-
 /*
- * 功能: 创建socket
- * 返回: >=0，成功，套接字描述符; -1，失败
- * IN  : domain     主机类型(常用AF_INET和AF_INET6)
- *          AF_INET             IPv4协议
- *          AF_INET6            IPv6协议
- *          AF_UNIX(AF_LOCAL)   Unix域协议
- *          AF_ROUTE            路由套接字
- *          AF_KEY              密钥套接字
- *       type       类型(常用SOCK_STREAM和SOCK_DGRAM)
- *          SOCK_STREAM         字节流套接字(TCP/SCTP)
- *          SOCK_DGRAM          数据报套接字(UDP)
- *          SOCK_SEQPACKET      有序分组套接字(SCTP)
- *          SOCK_RAM            原始套接字(IP)
- *       protocol   协议(通常写0取默认值即可)
- *          IPPROTO_TCP         TCP传输协议
- *          IPPROTO_UDP         UDP传输协议
- *          IPPROTO_SCTP        SCTP传输协议
+ * @brief   创建socket
+ * @param   domain   [IN] 主机类型(常用AF_INET和AF_INET6)
+ *                         AF_INET             IPv4协议
+ *                         AF_INET6            IPv6协议
+ *                         AF_UNIX(AF_LOCAL)   Unix域协议
+ *                         AF_ROUTE            路由套接字
+ *                         AF_KEY              密钥套接字
+ * @param   type     [IN] 类型(常用SOCK_STREAM和SOCK_DGRAM)
+ *                         SOCK_STREAM         字节流套接字(TCP/SCTP)
+ *                         SOCK_DGRAM          数据报套接字(UDP)
+ *                         SOCK_SEQPACKET      有序分组套接字(SCTP)
+ *                         SOCK_RAW            原始套接字(IP)
+ * @param   protocol [IN] 协议(通常写0取默认值即可)
+ *                         IPPROTO_TCP         TCP传输协议
+ *                         IPPROTO_UDP         UDP传输协议
+ *                         IPPROTO_SCTP        SCTP传输协议
+ * @return  >=0，成功，套接字描述符; -1，失败
  */
 int socket(int domain, int type, int protocol);
 ```
@@ -3616,13 +3764,13 @@ int socket(int domain, int type, int protocol);
 
 ```c
 /*
- * 功能: 将socket绑定到地址
- * 返回: 0，成功; -1，失败
- * IN  : sockfd     socket返回的套接字描述符
- *       addr       地址，取决于socket的domain，AF_INET(32位ipv4地址+16位端口号) AF_INET6(128位ipv6地址+16位端口号) AF_UNIX(文件路径)
- *       addrlen    addr的大小
- * 说明: 1、bind绑定0值ip地址(INADDR_ANY/IN6ADDR_ANY)表示有内核自己选择主机的网络接口，绑定0值端口表示由内核选择一个临时端口
- * 2、若没有先调用bind，当调用listen或connect时，内核自己选择主机的网络接口和临时端口
+ * @brief   将socket绑定到地址
+ * @param   sockfd  [IN] socket返回的套接字描述符
+ * @param   addr    [IN] 地址，取决于socket的domain，AF_INET(32位ipv4地址+16位端口号) AF_INET6(128位ipv6地址+16位端口号) AF_UNIX(文件路径)
+ * @param   addrlen [IN] addr的大小
+ * @return  0，成功; -1，失败
+ * @note    1、bind绑定0值ip地址(INADDR_ANY/IN6ADDR_ANY)表示有内核自己选择主机的网络接口，绑定0值端口表示由内核选择一个临时端口
+ *          2、若没有先调用bind，当调用listen或connect时，内核自己选择主机的网络接口和临时端口
  */
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 ```
@@ -3631,10 +3779,10 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
 ```c
 /*
- * 功能: 监听接入连接
- * 返回: 0，成功; -1，失败
- * IN  : sockfd     socket返回的套接字描述符
- *       backlog    最大监听的接入数目(不要设为0)，实际接入数目可能比这个值稍大
+ * @brief   监听接入连接
+ * @param   sockfd  [IN] socket返回的套接字描述符
+ * @param   backlog [IN] 最大监听的接入数目(不要设为0)，实际接入数目可能比这个值稍大
+ * @return  0，成功; -1，失败
  */
 int listen(int sockfd, int backlog);
 ```
@@ -3643,12 +3791,12 @@ int listen(int sockfd, int backlog);
 
 ```c
 /*
- * 功能: 接受客户端的连接请求
- * 返回: >=0，成功，套接字描述符; -1，失败
- * IN  : sockfd     socket返回的监听套接字描述符
- * OUT : addr       客户端的地址，取决于socket的domain
- *       addrlen    addr的大小
- * 说明: accept()会创建一个新的socket，与执行connect()的对等socket进行连接。
+ * @brief   接受客户端的连接请求
+ * @param   sockfd  [IN] socket返回的监听套接字描述符
+ * @param   addr    [OUT] 客户端的地址，取决于socket的domain
+ * @param   addrlen [INOUT] addr的大小
+ * @return  >=0，成功，套接字描述符; -1，失败
+ * @note    accept()会创建一个新的socket，与执行connect()的对等socket进行连接。
  */
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 ```
@@ -3657,20 +3805,20 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
 ```c
 /*
- * 功能: 客户端连接到服务器
- * 返回: >0，成功，套接字描述符; -1，失败
- * IN  : sockfd     socket返回的套接字描述符
- *       addr       客户端的地址，取决于socket的domain
- *       addrlen    addr的大小
- * 说明: 1、connect失败后必须关闭sockfd，重新创建sockfd再调用connect
- * 2、TCP客户端调用connect将触发TCP的三次握手过程:
- * a、ETIMEDOUT 错误表示没有收到SYN的ACK，连接不稳定或服务器没有剩余资源可用
- * b、ECONNREFUSED 错误表现为SYN的响应为RST，服务器没有在指定端口等待客户端连接
- *    注: 取消一个已有连接或接收到不存在的连接上的SYN也会出现RST
- * c、EHOSTUNREACH/ENETUNREACH 表示ICMP错误(无法收到ARP的响应)，路由不可达
- * 3、UDP也可以调用connect，表示记住对端地址，connect后可以使用send/recv，
- * 4、已连接的UDP不能再与其它对端(非记住的对端)通信，ICMP端口不可达错误
- * 5、UDP可以重复调用connect，表示修改记住新的对端或取消记住对端(sin_family设为AF_UNSPEC)
+ * @brief   客户端连接到服务器
+ * @param   sockfd  [IN] socket返回的套接字描述符
+ * @param   addr    [IN] 服务器的地址，取决于socket的domain
+ * @param   addrlen [IN] addr的大小
+ * @return  0，成功; -1，失败
+ * @note    1、connect失败后必须关闭sockfd，重新创建sockfd再调用connect
+ *          2、TCP客户端调用connect将触发TCP的三次握手过程:
+ *          a、ETIMEDOUT 错误表示没有收到SYN的ACK，连接不稳定或服务器没有剩余资源可用
+ *          b、ECONNREFUSED 错误表现为SYN的响应为RST，服务器没有在指定端口等待客户端连接
+ *             注: 取消一个已有连接或接收到不存在的连接上的SYN也会出现RST
+ *          c、EHOSTUNREACH/ENETUNREACH 表示ICMP错误(无法收到ARP的响应)，路由不可达
+ *          3、UDP也可以调用connect，表示记住对端地址，connect后可以使用send/recv，
+ *          4、已连接的UDP不能再与其它对端(非记住的对端)通信，ICMP端口不可达错误
+ *          5、UDP可以重复调用connect，表示修改记住新的对端或取消记住对端(sin_family设为AF_UNSPEC)
  */
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 ```
@@ -3679,19 +3827,31 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
 ```c
 /*
- * 功能: tcp发送接收，已连接UDP发送接收
- * 返回: >0，发送/接收字节数; 0, EOF; -1，失败
+ * @brief   tcp发送接收，已连接UDP发送接收
+ * @param   sockfd [IN] 套接字描述符
+ * @param   buffer [IN/OUT] 数据缓冲区
+ * @param   length [IN] 数据长度
+ * @param   flags  [IN] 标志位
+ * @return  >0，发送/接收字节数; 0, EOF; -1，失败
  */
 ssize_t send(int sockfd, const void *buffer, size_t length, int flags);
-size_t recv(int sockfd, void *buffer, size_t length, int flags);
+ssize_t recv(int sockfd, void *buffer, size_t length, int flags);
+```
 
 ### sendto / recvfrom - udp发送接收
 
+```c
 /*
- * 功能: udp发送接收
- * 返回: >0，发送/接收字节数; 0, EOF; -1，失败
- * IN  : flags      MSG_NOSIGNAL --> 忽略SIGPIPE信号(sendto)
- *                  MSG_DONTWAIT --> 此次启用非阻塞操作O_NONBLOCK (sendto/recvfrom)
+ * @brief   udp发送接收
+ * @param   sockfd     [IN] 套接字描述符
+ * @param   buffer     [IN/OUT] 数据缓冲区
+ * @param   length     [IN] 数据长度
+ * @param   flags      [IN] MSG_NOSIGNAL --> 忽略SIGPIPE信号(sendto)
+ *                           MSG_DONTWAIT --> 此次启用非阻塞操作O_NONBLOCK (sendto/recvfrom)
+ * @param   dest_addr  [IN] sendto目标地址
+ * @param   addrlen    [IN] 地址长度
+ * @param   src_addr   [OUT] recvfrom源地址
+ * @return  >0，发送/接收字节数; 0, EOF; -1，失败
  */
 ssize_t sendto(int sockfd, const void *buffer, size_t length, int flags,
                     const struct sockaddr *dest_addr, socklen_t addrlen);
@@ -3703,10 +3863,10 @@ ssize_t recvfrom(int sockfd, void *buffer, size_t length, int flags,
 
 ```c
 /*
- * 功能: 关闭socket
- * 返回: 0, 成功; -1，失败
- * IN  : sockfd     socket返回的套接字描述符
- * 说明: close后，TCP默认还会继续发送已排队等待发送到对端的数据，发送完毕后是正常的tcp终止
+ * @brief   关闭socket
+ * @param   sockfd [IN] socket返回的套接字描述符
+ * @return  0, 成功; -1，失败
+ * @note    close后，TCP默认还会继续发送已排队等待发送到对端的数据，发送完毕后是正常的tcp终止
  */
 int close(int sockfd);
 ```
@@ -3715,14 +3875,14 @@ int close(int sockfd);
 
 ```c
 /*
- * 功能: 半关闭socket
- * 返回: 0, 成功; -1，失败
- * IN  : sockfd     socket返回的套接字描述符
- *       how        SHUT_RD关闭读端; SHUT_WR关闭写端; SHUT_RDWR 关闭读写端
- * 说明: close把描述符计数减1，计数为0才关闭套接字；shutdown不管计数立即关闭
- * SHUT_RD 会丢弃套接字接收缓冲区的任何数据，调用后套接字接收对端的任何数据都会ACK后丢弃
- * SHUT_WR 继续发送已排队等待发送到对端的数据，发送完毕后是顶半部的tcp终止序列，半关闭
- * SHUT_RDWR 先调用SHUT_RD，然后调用SHUT_WR
+ * @brief   半关闭socket
+ * @param   sockfd [IN] socket返回的套接字描述符
+ * @param   how    [IN] SHUT_RD关闭读端; SHUT_WR关闭写端; SHUT_RDWR 关闭读写端
+ * @return  0, 成功; -1，失败
+ * @note    close把描述符计数减1，计数为0才关闭套接字；shutdown不管计数立即关闭
+ *          SHUT_RD 会丢弃套接字接收缓冲区的任何数据，调用后套接字接收对端的任何数据都会ACK后丢弃
+ *          SHUT_WR 继续发送已排队等待发送到对端的数据，发送完毕后是顶半部的tcp终止序列，半关闭
+ *          SHUT_RDWR 先调用SHUT_RD，然后调用SHUT_WR
  */
 int shutdown(int sockfd, int how);
 ```
@@ -3731,8 +3891,10 @@ int shutdown(int sockfd, int how);
 
 ```c
 /*
- * 功能: 网络字节转换，网络传输使用大端序
- * 说明: s 16位， l 32位， h host主机， n network网络
+ * @brief   网络字节转换，网络传输使用大端序
+ * @param   host_uint16/host_uint32/net_uint16/net_uint32 [IN] 待转换的值
+ * @return  转换后的值
+ * @note    s 16位， l 32位， h host主机， n network网络
  */
 uint16_t htons(uint16_t host_uint16);
 uint32_t htonl(uint32_t host_uint32);
@@ -3744,21 +3906,21 @@ uint32_t ntohl(uint32_t net_uint32);
 
 ```c
 /*
- * 功能: inet_pton  点分字符串ip地址转换(字符串到数值)
- *       inet_ntop  点分字符串ip地址转换(数值到字符串)
- *       inet_addr  IPv4点分字符串ip地址转换(字符串到数值)(废弃)
- *       inet_aton  IPv4点分字符串ip地址转换(字符串到数值)
- *       inet_ntoa  IPv4点分字符串ip地址转换(数值到字符串)(不可重入)
- * 返回: inet_pton  1，成功; 0, EOF; -1，失败
- *       inet_ntop  dst_str地址，成功; NULL，失败
- *       inet_addr  32位网络字节序的数值，成功; INADDR_NONE(位全为1), 失败
- *       inet_aton  1，成功; 0, 失败
- *       inet_ntoa  非空指针，成功; NULL，失败
- * 说明: p present呈现形式， n network网络
- *       domain     主机类型，AF_UNIX(AF_LOCAL) AF_INET AF_INET6
- *       src_str/dst_str  点分ip地址字符串
- *       len        数组长度 INET_ADDRSTRLEN INET6_ADDRSTRLEN
- *       addrptr    转换的数值 in_addr, in6_addr
+ * @brief   点分字符串ip地址转换
+ * @param   domain   [IN] 主机类型，AF_UNIX(AF_LOCAL) AF_INET AF_INET6
+ * @param   src_str  [IN] 点分ip地址字符串
+ * @param   dst_str  [OUT] 转换后的字符串
+ * @param   addrptr  [IN/OUT] 转换的数值 in_addr, in6_addr
+ * @param   len      [IN] 数组长度 INET_ADDRSTRLEN INET6_ADDRSTRLEN
+ * @return  inet_pton  1，成功; 0, EOF; -1，失败
+ *          inet_ntop  dst_str地址，成功; NULL，失败
+ *          inet_addr  32位网络字节序的数值，成功; INADDR_NONE(位全为1), 失败
+ *          inet_aton  1，成功; 0, 失败
+ *          inet_ntoa  非空指针，成功; NULL，失败
+ * @note    p present呈现形式， n network网络
+ *          inet_addr  IPv4点分字符串ip地址转换(字符串到数值)(废弃)
+ *          inet_aton  IPv4点分字符串ip地址转换(字符串到数值)
+ *          inet_ntoa  IPv4点分字符串ip地址转换(数值到字符串)(不可重入)
  */
 int inet_pton(int domain, const char *src_str, void *addrptr);
 const char *inet_ntop(int domain, const void *addrptr, char *dst_str, size_t len);
@@ -3772,9 +3934,12 @@ char *inet_ntoa(struct in_addr addrptr);
 
 ```c
 /*
- * 功能: getsockname 返回sockfd的本机ip参数
- *       getpeername 返回sockfd的对端ip参数
- * 返回: 0，成功; -1，失败
+ * @brief   获取套接字地址信息
+ * @param   sockfd    [IN] 套接字描述符
+ * @param   localaddr [OUT] getsockname本机地址
+ * @param   peeraddr  [OUT] getpeername对端地址
+ * @param   addrlen   [INOUT] 地址长度
+ * @return  0，成功; -1，失败
  */
 int getsockname(int sockfd, struct sockaddr *localaddr, socklen_t *addrlen);
 int getpeername(int sockfd, struct sockaddr *peeraddr, socklen_t *addrlen);
@@ -3784,9 +3949,13 @@ int getpeername(int sockfd, struct sockaddr *peeraddr, socklen_t *addrlen);
 
 ```c
 /*
- * 功能: getsockopt 获取套接字属性
- *       setsockopt 设置套接字属性
- * 返回: 0，成功; -1，失败
+ * @brief   获取/设置套接字属性
+ * @param   sockfd  [IN] 套接字描述符
+ * @param   level   [IN] 协议级别(SOL_SOCKET, IPPROTO_TCP等)
+ * @param   optname [IN] 选项名称
+ * @param   optval  [IN/OUT] 选项值
+ * @param   optlen  [IN/OUT] 选项值长度
+ * @return  0，成功; -1，失败
  */
 int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
 int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t *optlen);
@@ -3796,13 +3965,16 @@ int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t
 
 ```c
 /*
- * 功能: gethostbyname 通过主机名查询主机详细信息
- *       gethostbyaddr 通过IP地址值查询主机详细信息
- * 返回: 非空指针，成功; NULL，失败
- * 说明: 1、函数执行失败不会设置errno，而是设置h_errno为 HOST_NOT_FOUND TRY_AGAIN NO_RECOVERY NO_DATA(NO ADDRESS) 中的某个值，可以使用hstrerror获取错误说明。
- * 2、gethostbyname的hostname接受www.google.com类型的主机名，实现一般可以接受点分字符串
- * 3、gethostbyaddr的addr实际不是 char* 类型，而是 in_addr* 结构指针
- * 3、只适用于IPv4，不适用于IPv6，将被弃用
+ * @brief   查询主机详细信息
+ * @param   hostname [IN] 主机名
+ * @param   addr     [IN] IP地址值(in_addr*结构指针)
+ * @param   len      [IN] 地址长度
+ * @param   family   [IN] 地址族
+ * @return  非空指针，成功; NULL，失败
+ * @note    1、函数执行失败不会设置errno，而是设置h_errno为 HOST_NOT_FOUND TRY_AGAIN NO_RECOVERY NO_DATA(NO ADDRESS) 中的某个值，可以使用hstrerror获取错误说明。
+ *          2、gethostbyname的hostname接受www.google.com类型的主机名，实现一般可以接受点分字符串
+ *          3、gethostbyaddr的addr实际不是 char* 类型，而是 in_addr* 结构指针
+ *          4、只适用于IPv4，不适用于IPv6，将被弃用
  */
 struct hostent
 {
@@ -3823,10 +3995,12 @@ struct hostent *gethostbyaddr(const char *addr, socklen_t len, int family);
 
 ```c
 /*
- * 功能: getservbyname 通过服务名查询服务详细信息
- *       getservbyport 通过IP端口值查询服务详细信息
- * 返回: 非空指针，成功; NULL，失败
- * 例子: getservbyname("ftp", "tcp")  getservbyport(htons(21), "tcp")
+ * @brief   查询服务详细信息
+ * @param   servname [IN] 服务名
+ * @param   protoname [IN] 协议名
+ * @param   port     [IN] 端口号(网络字节序)
+ * @return  非空指针，成功; NULL，失败
+ * @note    例子: getservbyname("ftp", "tcp")  getservbyport(htons(21), "tcp")
  */
 struct servent
 {
@@ -3843,14 +4017,14 @@ struct servent *getservbyport(int port, const char *protoname); // port 网络�
 
 ```c
 /*
- * 功能: 查询主机和服务详细信息
- * 返回: 0，成功; 非0，失败(使用gai_strerror获取描述)
- * IN  : hostname   主机名或ip地址字符串
- *       service    服务名或端口号字符串
- *       hints      获取建议选项，可以为空
- * OUT : result     获取结果
- * 说明: 1、适用于IPv4和IPv6
- * 2、需要调用freeaddrinfo释放 *result
+ * @brief   查询主机和服务详细信息
+ * @param   hostname [IN] 主机名或ip地址字符串
+ * @param   service  [IN] 服务名或端口号字符串
+ * @param   hints    [IN] 获取建议选项，可以为空
+ * @param   result   [OUT] 获取结果链表
+ * @return  0，成功; 非0，失败(使用gai_strerror获取描述)
+ * @note    1、适用于IPv4和IPv6
+ *          2、需要调用freeaddrinfo释放 *result
  */
 struct addrinfo
 {
@@ -3865,16 +4039,22 @@ struct addrinfo
 };
 int getaddrinfo(const char *hostname, const char *service,
         const struct addrinfo *hints, struct addrinfo **result);
-void freeaddrinfo(getaddrinfo *ai)
+void freeaddrinfo(struct addrinfo *ai);
 
 /*
- * 功能: 查询主机和服务信息
- * 返回: 0，成功; 非0，失败(使用gai_strerror获取描述)
- * 说明: 将addrinfo转换为可读字符串
+ * @brief   将sockaddr转换为可读字符串
+ * @param   addrinfo [IN] sockaddr地址结构
+ * @param   addrlen  [IN] 地址结构长度
+ * @param   host     [OUT] 主机名/地址字符串缓冲区
+ * @param   hostlen  [IN] host缓冲区长度
+ * @param   serv     [OUT] 服务名/端口字符串缓冲区
+ * @param   servlen  [IN] serv缓冲区长度
+ * @param   flags    [IN] 控制标志
+ * @return  0，成功; 非0，失败(使用gai_strerror获取描述)
  */
 int getnameinfo(const struct sockaddr *addrinfo, socklen_t addrlen,
         char *host, socklen_t hostlen, char *serv, socklen_t servlen,
-        const struct addrinfo *hints, struct addrinfo **result);
+        int flags);
 ```
 
 ## IO多路复用
@@ -3891,25 +4071,25 @@ int getnameinfo(const struct sockaddr *addrinfo, socklen_t addrlen,
 
 ```c
 /*
- * 功能: 查询文件描述符集合中的fd就绪状态
- * 返回: >0，就绪描述符数目; 0, 超时; -1，出错(例如EINTR)
- * IN  : maxfdp1    描述符集合中值最大的描述符值加1
- * INOUT:readfds/writefds/exceptfds    监控需要 读取/写入/异常 的文件描述符集合，设为NULL表示不关心
- * IN  : timeout    超时时间: NULL，知道有fd就绪才返回； 值为0， 查询后立即返回； 值大于0，有fd就绪返回或超时返回timeval 为 tv_sec + tv_usec
- * 说明: 1、调用select时，我们将关心的fd加入fd_set，select返回时，结果将指示哪些描述符已经就绪
- * 2、select会修改fdset，所以每次select调用前都要清空集合再将fd加入集合
- * 3、select每次调用查询前都要把fd_set从应用复制到内核，查询完后都要把fd_set从内核复制到应用
- * 4、select支持的fd数目有限，最大 FD_SETSIZE，例如 1024(x86) 2048(x64)
- * 5、监听套接字可读表示有客户端接入，这时可以调用accept
- * 6、当某个套接字上发生错误时，fd既可读又可写
- * 7、监控异常例如TCP带外数据
+ * @brief   查询文件描述符集合中的fd就绪状态
+ * @param   maxfdp1                [IN] 描述符集合中值最大的描述符值加1
+ * @param   readfds/writefds/exceptfds [INOUT] 监控需要 读取/写入/异常 的文件描述符集合，设为NULL表示不关心
+ * @param   timeout                [IN] 超时时间: NULL，知道有fd就绪才返回； 值为0， 查询后立即返回； 值大于0，有fd就绪返回或超时返回timeval 为 tv_sec + tv_usec
+ * @return  >0，就绪描述符数目; 0, 超时; -1，出错(例如EINTR)
+ * @note    1、调用select时，我们将关心的fd加入fd_set，select返回时，结果将指示哪些描述符已经就绪
+ *          2、select会修改fdset，所以每次select调用前都要清空集合再将fd加入集合
+ *          3、select每次调用查询前都要把fd_set从应用复制到内核，查询完后都要把fd_set从内核复制到应用
+ *          4、select支持的fd数目有限，最大 FD_SETSIZE，例如 1024(x86) 2048(x64)
+ *          5、监听套接字可读表示有客户端接入，这时可以调用accept
+ *          6、当某个套接字上发生错误时，fd既可读又可写
+ *          7、监控异常例如TCP带外数据
  */
  #include <sys/select.h>
 void FD_ZERO(fd_set *fdset);            // 清空文件描述符集合
 void FD_SET(int fd, fd_set *fdset);     // fd加入文件描述符集合
 void FD_CLR(int fd, fd_set *fdset);     // fd离开文件描述符集合
 void FD_ISSET(int fd, fd_set *fdset);   // select()后测试fd是否就绪
-int select(int maxfdp1, fd_set *readfds,　fd_set *writefds, fd_set *exceptfds,
+int select(int maxfdp1, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
         const struct timeval *timeout);
 ```
 
@@ -3917,23 +4097,23 @@ int select(int maxfdp1, fd_set *readfds,　fd_set *writefds, fd_set *exceptfds,
 
 ```c
 /*
- * 功能: 查询文件描述符集合中的fd就绪状态
- * 返回: >0，就绪描述符数目; 0, 超时; -1，出错(例如EINTR)
- * INOUT:fds        监控fd描述符的数组
- * IN  : nfds       监控fd的数目
- * IN  : timeout    超时时间: INFTIM ，永远等待; 0 ，立即返回; >0 ， 等待毫秒数
- * 说明: 可读项和可写项可以作为events的输入，可读项、可写项和异常项可以作为revents的输出
- * 可读项: POLLIN       普通或优先级带数据可读
- *         POLLRDNORM   普通数据可读
- *         POLLRDBAND   优先级带数据可读
- *         POLLPRI      高优先级数据可读
- * 可写项: POLLOUT      普通数据可写
- *         POLLRDNORM   普通数据可写
- *         POLLRDBAND   优先级带数据可写
- * 异常项：POLLERR      发生错误
- *         POLLHUP      发生挂起
- *         POLLRDBAND   描述符不是一个打开的文件
- * 说明: 调用poll函数之后fds数组不会被清空
+ * @brief   查询文件描述符集合中的fd就绪状态
+ * @param   fds     [INOUT] 监控fd描述符的数组
+ * @param   nfds    [IN] 监控fd的数目
+ * @param   timeout [IN] 超时时间: INFTIM ，永远等待; 0 ，立即返回; >0 ， 等待毫秒数
+ * @return  >0，就绪描述符数目; 0, 超时; -1，出错(例如EINTR)
+ * @note    可读项和可写项可以作为events的输入，可读项、可写项和异常项可以作为revents的输出
+ *          可读项: POLLIN       普通或优先级带数据可读
+ *                  POLLRDNORM   普通数据可读
+ *                  POLLRDBAND   优先级带数据可读
+ *                  POLLPRI      高优先级数据可读
+ *          可写项: POLLOUT      普通数据可写
+ *                  POLLRDNORM   普通数据可写
+ *                  POLLRDBAND   优先级带数据可写
+ *          异常项：POLLERR      发生错误
+ *                  POLLHUP      发生挂起
+ *                  POLLNVAL     描述符不是一个打开的文件
+ *          调用poll函数之后fds数组不会被清空
  */
 #include <poll.h>
 
@@ -3941,7 +4121,7 @@ struct pollfd {
     int fd;             /* 需要被检测或选择的文件描述符 负值表示不关心 */
     short events;       /* 对文件描述符fd上感兴趣的事件，用户调用前设置这个域*/
     short revents;      /* 文件描述符fd上当前实际发生的事件，内核在调用返回时设置这个域 */
-}
+};
 int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 ```
 
@@ -3953,10 +4133,10 @@ int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 
 ```c
 /*
- * 功能: 创建epoll文件描述符
- * 返回: >=0，epoll文件描述符; -1，失败
- * IN  : size       监听文件描述符的数目，Linux 2.6.8后已废弃，但必须大于0
- * 说明: 可以使用close关闭epoll文件描述符
+ * @brief   创建epoll文件描述符
+ * @param   size [IN] 监听文件描述符的数目，Linux 2.6.8后已废弃，但必须大于0
+ * @return  >=0，epoll文件描述符; -1，失败
+ * @note    可以使用close关闭epoll文件描述符
  */
 #include <sys/epoll.h>
 int epoll_create(int size);
@@ -3973,22 +4153,22 @@ int epoll_create(int size);
 
 ```c
 /*
- * 功能: 控制操作的文件描述符
- * 返回: 0，成功; -1，失败
- * IN  : epfd       epoll文件描述符
- * IN  : op         进行的操作
- *      EPOLL_CTL_ADD 注册新的fd到epfd中
- *      EPOLL_CTL_MOD 修改已经注册的fd的监听事件
- *      EPOLL_CTL_DEL 从epfd中删除一个fd
- * IN  : fd         要操作的文件描述符
- * IN  : event      位掩码
- *      EPOLLIN         可以读(包括对端SOCKET正常关闭)
- *      EPOLLOUT        可以写
- *      EPOLLPRI        有紧急的数据可读(这里应该表示有带外数据到来)
- *      EPOLLERR        发生错误
- *      EPOLLHUP        发生挂起
- *      EPOLLET         将epoll设为边缘触发(Edge Triggered)模式
- *      EPOLLONESHOT    只监听一次事件，监听到后就把该文件描述符从epfd
+ * @brief   控制操作的文件描述符
+ * @param   epfd  [IN] epoll文件描述符
+ * @param   op    [IN] 进行的操作
+ *                    EPOLL_CTL_ADD 注册新的fd到epfd中
+ *                    EPOLL_CTL_MOD 修改已经注册的fd的监听事件
+ *                    EPOLL_CTL_DEL 从epfd中删除一个fd
+ * @param   fd    [IN] 要操作的文件描述符
+ * @param   event [IN] 位掩码事件结构体
+ *                    EPOLLIN         可以读(包括对端SOCKET正常关闭)
+ *                    EPOLLOUT        可以写
+ *                    EPOLLPRI        有紧急的数据可读(这里应该表示有带外数据到来)
+ *                    EPOLLERR        发生错误
+ *                    EPOLLHUP        发生挂起
+ *                    EPOLLET         将epoll设为边缘触发(Edge Triggered)模式
+ *                    EPOLLONESHOT    只监听一次事件，监听到后就把该文件描述符从epfd
+ * @return  0，成功; -1，失败
  */
 #include <sys/epoll.h>
 typedef union epoll_data {
@@ -4009,12 +4189,12 @@ int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
 
 ```c
 /*
- * 功能: 阻塞等待内核返回的可读写事件
- * 返回: >0，就绪描述符数目; 0, 超时; -1，出错(例如EINTR)
- * IN  : epfd       epoll文件描述符
- * INOUT:events     监控事件的数组
- * IN  : nfds       监控事件的数目，必须大于0
- * IN  : timeout    超时时间: -1 ，永远等待; 0 ，立即返回; >0 ， 等待毫秒数
+ * @brief   阻塞等待内核返回的可读写事件
+ * @param   epfd      [IN] epoll文件描述符
+ * @param   events    [OUT] 监控事件的数组
+ * @param   maxevents [IN] 监控事件的数目，必须大于0
+ * @param   timeout   [IN] 超时时间: -1 ，永远等待; 0 ，立即返回; >0 ， 等待毫秒数
+ * @return  >0，就绪描述符数目; 0, 超时; -1，出错(例如EINTR)
  */
 #include <sys/epoll.h>
 int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
@@ -5018,7 +5198,7 @@ void do_epoll(int listen_fd)
                         stream_read(&param[j]);
                     }
                     if (param[j].sockfd >= 0 && (events[i].events & EPOLLOUT)) {
-                        stream_write(&param[i]);
+                        stream_write(&param[j]);
                     }
                 }
                 if (j == MAX_CLIENTS || param[j].sockfd < 0) {
@@ -5072,7 +5252,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    switch (atoi(argv[3])) {
+    switch (atoi(argv[3]))) {
         case 0: do_select(listen_fd); break;
         case 1: do_poll(listen_fd);   break;
         case 2: do_epoll(listen_fd);  break;
@@ -5138,7 +5318,7 @@ MultiFifo* multi_fifo_init(MultiFifoSet *para)
     }
     if ((fifo->ptr = calloc(1, para->size)) == NULL)
     {
-        MULTI_FIFO_ERR("malloc(%d) failed!\n", size);
+        MULTI_FIFO_ERR("malloc(%d) failed!\n", para->size);
         goto err;
     }
     if ((fifo->cur = calloc(para->total, sizeof(char*))) == NULL)
@@ -5293,7 +5473,7 @@ int multi_fifo_write(MultiFifo *fifo, char *buf, int size)
         {
             goto end;
         }
-        else (fifo->wchoice == 0)
+        else if (fifo->wchoice == 0)
         {
             if (max == 0)
                 goto end;
@@ -5402,7 +5582,7 @@ int multi_fifo_free_sel_get(MultiFifo *fifo)
             fifo->cur[i] = fifo->head;
             fifo->full[i] = 0;
             sel = i;
-            break
+            break;
         }
     }
     pthread_mutex_unlock(&fifo->mtx);
@@ -5498,8 +5678,7 @@ static void *block_mem_new(int id, int size, struct list_head *head)
 
     tmp1 = size % 4;
     tmp2 = (tmp1 != 0) ? (size + 4 - tmp1) : (size);
-
-    if ((node = calloc(1, sizeof(BlockMemNode))) == NULL)
+if ((node = calloc(1, sizeof(BlockMemNode))) == NULL)
     {
         printf("[%s:%d]malloc failed!\n", __func__, __LINE__);
         return NULL;
@@ -5630,7 +5809,7 @@ int binary_sort(int *array, int num)
 {
     int *sort = NULL;
     int cnt = 0;
-    int i;
+    int i, j;
     int low, centre, high;
 
     if (num <= 0 || array == NULL)
@@ -5645,17 +5824,17 @@ int binary_sort(int *array, int num)
         centre = 0;
         for (low = 0, high = cnt - 1; low <= high; ) {
             centre = (low + high) / 2;
-            } else if (sort[centre] >= array[cnt]) {
-                if (centre-1 < 0 || sort[centre-1] <= array[cnt]) {
-                    break;
-                }
-                high = centre - 1;
-            } else {
+            if (sort[centre] < array[cnt]) {
                 if (centre+1 == cnt || sort[centre+1] >= array[cnt]) {
                     centre++;
                     break;
                 }
                 low = centre + 1;
+            } else if (sort[centre] >= array[cnt]) {
+                if (centre-1 < 0 || sort[centre-1] <= array[cnt]) {
+                    break;
+                }
+                high = centre - 1;
             }
         }
 
@@ -5663,6 +5842,12 @@ int binary_sort(int *array, int num)
             sort[j] = sort[j-1];
         }
         sort[centre] = array[cnt];
+        cnt++;
+    }
+    
+    // Copy sorted data back to original array
+    for (i = 0; i < num; i++) {
+        array[i] = sort[i];
     }
     free(sort);
 

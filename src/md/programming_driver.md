@@ -31,7 +31,7 @@
 | drivers       | 设备类和外设控制器的驱动 |
 | fs            | VFS和各种文件系统 |
 | include       | 内核头文件 |
-| init          | 内核引导和初始化，比如著名的函数start_kernel()便是位于init/main.c里面 |
+| init          | 内核引导和初始化，比如著名的函数 `start_kernel()` 便是位于 `init/main.c` 里面 |
 | ipc           | 对消息队列、信号、共享内存等进程间通信(IPC)机制的支持 |
 | kernel        | 像调度程序这样的核心子系统，基本上是与体系无关的部分 |
 | lib           | 通用内核对象(kobject)处理函数、循环余码校验(CRC)计算函数等库函数 |
@@ -80,7 +80,7 @@ MODULE_PARM_DESC(num, "You can use 'hello_change' to change num value");
 // 模块导出符号
 void hello_set_param(int n)
 {
-    printk("change num from %d to %d./n", num, n);
+    printk("change num from %d to %d.\n", num, n);
     num = n;
 }
 EXPORT_SYMBOL(hello_set_param);
@@ -88,8 +88,8 @@ EXPORT_SYMBOL(hello_set_param);
 // 模块加载函数
 static int __init hello_init(void)
 {
-    printk("Hello World! --> module_init./n");
-    printk("num=%d! --> module_param./n", num);
+    printk("Hello World! --> module_init.\n");
+    printk("num=%d! --> module_param.\n", num);
     return 0;
 }
 module_init(hello_init);
@@ -97,7 +97,7 @@ module_init(hello_init);
 // 模块卸载函数
 static void __exit hello_exit(void)
 {
-    printk("Hello World! --> module_exit./n");
+    printk("Hello World! --> module_exit.\n");
 }
 module_exit(hello_exit);
 
@@ -115,16 +115,16 @@ MODULE_LICENSE("GPL v2");
     * 使用 `module_param(参数名, 参数类型, 参数读/写权限);` 为模块声明一个参数
     * 使用 `module_param_array(参数名, 参数类型, 元素个数, 参数读/写权限);` 为模块声明一个数组参数
     * 参数类型：
-        * bool   : 布尔类型
+        * bool   : 布尔类型
         * invbool: 颠倒了值的bool类型
-        * short  : 短整型
+        * short  : 短整型
         * ushort : 无符号短整型
-        * int    : 整型
-        * uint   : 无符号整型
-        * long   : 长整型
-        * ulong  : 无符号长整型
-        * charp  : 字符指针类型，内存为用户提供的字符串分配
-    * 在装载内核模块时，用户可以向模块传递参数，形式为 `insmode (或modprobe) 模块名 参数名=参数值`
+        * int    : 整型
+        * uint   : 无符号整型
+        * long   : 长整型
+        * ulong  : 无符号长整型
+        * charp  : 字符指针类型，内存为用户提供的字符串分配
+    * 在装载内核模块时，用户可以向模块传递参数，形式为 `insmod (或modprobe) 模块名 参数名=参数值`
     * 运行 `insmod` 或 `modprobe` 命令时，应使用==逗号==分隔输入的数组元素
     * 如果模块被内置，可以通过在bootargs里设置 "模块名.参数名=值" 的形式给该内置的模块传递参数
     * 模块被加载后，在 `/sys/module/` 目录下将出现以此模块名命名的目录
@@ -162,18 +162,18 @@ MODULE_LICENSE("GPL v2");
     * 许可证(LICENSE)声明描述内核模块的许可权限，如果不声明LICENSE，模块被加载时，将收到内核被污染(Kernel Tainted)的警告
         * GPL               ：GNU General Public License的任意版本
         * GPL v2            ：GPL的第二版本，常用
-        * GPL and addtional ：
-        * Dual BSD/GPL      ：
-        * Dual MPL/GPL      ：
+        * GPL and addtional ：GPL和其他许可证的组合
+        * Dual BSD/GPL      ：BSD和GPL双重许可
+        * Dual MPL/GPL      ：MPL和GPL双重许可
         * Proprietary       ：私有的，除非你的模块显式地声明一个开源版本，否则内核会默认你这是一个私有的模块
 
 * 3类设备
 
 | 设备类型 | 抽象对象 | 访问方法 | 操作接口 | 设备例子 |
 | --- | --- | --- | --- | --- |
-| 字符设备 | struct cdev | 必须以串行顺序依次进行访问的设备，支持按字节/字符来读写数据 | 文件系统接口 | 触摸屏、磁带驱动器、鼠标 |
-| 块设备   | struct block_device | 按任意顺序进行访问，以块(通常是512B)为单位进行操作 | 文件系统接口 | 硬盘、eMMC |
-| 网络设备 | struct net_device |网络数据包的接收和发送 | 套接字接口 | |
+| 字符设备 | `struct cdev` | 必须以串行顺序依次进行访问的设备，支持按字节/字符来读写数据 | 文件系统接口 | 触摸屏、磁带驱动器、鼠标 |
+| 块设备   | `struct block_device` | 按任意顺序进行访问，以块(通常是512B)为单位进行操作 | 文件系统接口 | 硬盘、eMMC |
+| 网络设备 | `struct net_device` |网络数据包的接收和发送 | 套接字接口 | 网卡、WiFi |
 
 * 字符设备存在于/dev下，网络设备并不存在于/dev下面
 
@@ -182,29 +182,29 @@ MODULE_LICENSE("GPL v2");
 ### 驱动框架
 
 * 实现设备驱动
-    * 填充 struct operations 结构体部分内容
+    * 填充 `struct file_operations` 结构体部分内容
 * 实现模块初始化
-    * 申请设备号(dev_t)
+    * 申请设备号(`dev_t`)
         * 静态申请 : `register_chrdev_region()`
         * 动态申请 : `alloc_chrdev_region()`
-    * 初始化 cdev : `cdev_init()`
-    * 注册 cdev : `cdev_add()`
+    * 初始化 `cdev` : `cdev_init()`
+    * 注册 `cdev` : `cdev_add()`
     * 建立设备类节点 : `class_create()`
     * 建立设备节点 : `device_create()`
 * 实现模块销毁
     * 删除设备节点 : `device_destroy()`
     * 删除设备类节点 : `class_destroy()`
-    * 释放 cdev : `cdev_del()`
+    * 释放 `cdev` : `cdev_del()`
     * 释放设备号 : `unregister_chrdev_region()`
 
 ### 申请释放设备号
 
 ```c
-#incude <linux/fs.h>
+#include <linux/fs.h>
 ```
 
 * 设备号分 主设备号 和 次设备号
-    * `MKDEV(major, minor)` 通过主设备号和次设备号生成设备号，设备号用 `dev_t` 来表示，dev_t 是32 bit的数
+    * `MKDEV(major, minor)` 通过主设备号和次设备号生成设备号，设备号用 `dev_t` 来表示，`dev_t` 是32 bit的数
     * `MAJOR(dev)` 获得主设备号，主设备号区别设备类型，设备号的高 12 bit
     * `MINOR(dev)` 获得次设备号，次设备号表示具体的设备，设备号的低 20 bit
 
@@ -212,12 +212,11 @@ MODULE_LICENSE("GPL v2");
 
 ```c
 /*
- * 功能: 静态申请连续设备号
- * 返回: 0，成功; <0，失败
- * IN  : from       要申请的起始设备号
- * IN  : count      要申请的连续设备号的数量
- * IN  : name       设备名称
- * 说明: from通过MKDEV(ma,mi)生成
+ * @brief   静态申请连续设备号
+ * @param   from    [IN] 要申请的起始设备号，通过MKDEV(ma,mi)生成
+ * @param   count   [IN] 要申请的连续设备号的数量
+ * @param   name    [IN] 设备名称
+ * @return  0，成功; <0，失败
  */
 int register_chrdev_region(dev_t from, unsigned count, const char *name);
 ```
@@ -226,13 +225,13 @@ int register_chrdev_region(dev_t from, unsigned count, const char *name);
 
 ```c
 /*
- * 功能: 动态申请连续设备号
- * 返回: 0，成功; <0，失败
- * OUT : dev        返回申请到的起始设备编号
- * IN  : baseminor  要申请的起始次设备号
- * IN  : count      要申请的连续设备号的数量
- * IN  : name       设备名称
- * 说明: 和alloc_chrdev_region二选一即可
+ * @brief   动态申请连续设备号
+ * @param   dev       [OUT] 返回申请到的起始设备编号
+ * @param   baseminor [IN]  要申请的起始次设备号
+ * @param   count     [IN]  要申请的连续设备号的数量
+ * @param   name      [IN]  设备名称
+ * @return  0，成功; <0，失败
+ * @note    和register_chrdev_region二选一即可
  */
 int alloc_chrdev_region(dev_t *dev, unsigned baseminor, unsigned count, const char *name);
 ```
@@ -241,10 +240,10 @@ int alloc_chrdev_region(dev_t *dev, unsigned baseminor, unsigned count, const ch
 
 ```c
 /*
- * 功能: 释放连续设备号
- * 返回: none
- * IN  : from       要释放的起始设备号
- * IN  : count      要释放的连续设备号的数量
+ * @brief   释放连续设备号
+ * @param   from    [IN] 要释放的起始设备号
+ * @param   count   [IN] 要释放的连续设备号的数量
+ * @return  无
  */
 void unregister_chrdev_region(dev_t from, unsigned count);
 ```
@@ -264,12 +263,12 @@ static inline void unregister_chrdev(unsigned int major, const char *name)
 }
 ```
 
-* 缺点：每注册个字符设备，还会连续注册0~255个次设备号，使它们绑定在同一个file_operations操作方法结构体上，在大多数情况下，都只用极少的次设备号，所以会浪费很多资源
+* 缺点：每注册个字符设备，还会连续注册0~255个次设备号，使它们绑定在同一个`file_operations`操作方法结构体上，在大多数情况下，都只用极少的次设备号，所以会浪费很多资源
 
 ### 初始化释放cdev
 
 ```c
-#incude <linux/cdev.h>
+#include <linux/cdev.h>
 ```
 
 #### struct cdev 结构体
@@ -288,7 +287,7 @@ struct cdev {
 #### struct file_operations 结构体
 
 ```c
-#incude <linux/fs.h>
+#include <linux/fs.h>
 
 struct inode {
 	umode_t			i_mode;
@@ -486,7 +485,7 @@ struct file_operations {
 } __randomize_layout;
 ```
 
-* unlocked_ioctl : 对应fcntl ioctl
+* `unlocked_ioctl` : 对应fcntl ioctl
 * 注意 `struct inode` 的 `i_cdev` 成员，可以通过它找到私有数据
 * 注意 `struct file` 的 `private_data` 成员，`open` 时会把私有数据的指针赋值给它，后面就可以使用私有数据了
 
@@ -498,16 +497,14 @@ struct test_dev {
     unsigned char *private_data;
 };
 
-static int iav_open(struct inode *inode, struct file *filp)
+static int test_open(struct inode *inode, struct file *filp)
 {
 	struct test_dev *dev = NULL;
-	struct iav_file_priv_obj *private_data = NULL;
-	int rval = 0;
 
 	dev = container_of(inode->i_cdev, struct test_dev, cdev);
 	filp->private_data = dev->private_data;
 
-	return rval;
+	return 0;
 }
 ```
 
@@ -515,10 +512,10 @@ static int iav_open(struct inode *inode, struct file *filp)
 
 ```c
 /*
- * 功能: 初始化字符设备
- * 返回: none
- * IN  : cdev       要初始化的字符设备
- * IN  : fops       初始化的字符设备操作函数
+ * @brief   初始化字符设备
+ * @param   cdev    [IN] 要初始化的字符设备
+ * @param   fops    [IN] 初始化的字符设备操作函数
+ * @return  无
  */
 void cdev_init(struct cdev *cdev, const struct file_operations *fops);
 ```
@@ -527,32 +524,32 @@ void cdev_init(struct cdev *cdev, const struct file_operations *fops);
 
 ```c
 /*
- * 功能: 关联设备号与字符设备
- * 返回: 0，成功; <0，失败
- * IN  : p          要关联的字符设备
- * IN  : dev        要关联的起始设备号
- * IN  : count      要关联的连续设备号的数量
- * 说明: 可以为不同的设备号关联不同的设备操作函数
+ * @brief   关联设备号与字符设备
+ * @param   p       [IN] 要关联的字符设备
+ * @param   dev     [IN] 要关联的起始设备号
+ * @param   count   [IN] 要关联的连续设备号的数量
+ * @return  0，成功; <0，失败
+ * @note    可以为不同的设备号关联不同的设备操作函数
  */
-int cdev_add(struct cdev *p, dev_t dev, unsigned count)
+int cdev_add(struct cdev *p, dev_t dev, unsigned count);
 ```
 
 #### cdev_del - 释放字符设备
 
 ```c
 /*
- * 功能: 释放字符设备
- * 返回: none
- * IN  : p          要释放的字符设备
+ * @brief   释放字符设备
+ * @param   p       [IN] 要释放的字符设备
+ * @return  无
  */
-void cdev_del(struct cdev *p)
+void cdev_del(struct cdev *p);
 ```
 
 ### 建立删除设备(类)节点
 
 ```c
-#incude <linux/device/class.h>
-#incude <linux/device.h>
+#include <linux/device/class.h>
+#include <linux/device.h>
 ```
 
 #### class_create和device_create的关系
@@ -576,10 +573,10 @@ void cdev_del(struct cdev *p)
 
 ```c
 /*
- * 功能: 建立设备类节点
- * 返回: 非空指针，成功; NULL，失败
- * IN  : owner      class的所有者，一般使用 THIS_MODULE 本模块
- * IN  : name       class的名称
+ * @brief   建立设备类节点
+ * @param   owner   [IN] class的所有者，一般使用 THIS_MODULE 本模块
+ * @param   name    [IN] class的名称
+ * @return  非空指针，成功; ERR_PTR，失败
  */
 struct class *__class_create(struct module *owner, const char *name,
 			     struct lock_class_key *key);
@@ -594,16 +591,16 @@ struct class *__class_create(struct module *owner, const char *name,
 
 ```c
 /*
- * 功能: 删除设备类节点
- * 返回: none
- * IN  : cls        class指针
+ * @brief   删除设备类节点
+ * @param   cls     [IN] class指针
+ * @return  无
  */
 void class_destroy(struct class *cls);
 ```
 
 #### class_register / class_unregister
 
-* class_create / class_destroy 他们的封装函数，功能等价
+* `class_create` / `class_destroy` 他们的封装函数，功能等价
 
 ```c
 struct class *__class_create(struct module *owner, const char *name,
@@ -658,13 +655,13 @@ void class_destroy(struct class *cls)
 
 ```c
 /*
- * 功能: 建立设备节点
- * 返回: 非空指针，成功; NULL，失败
- * IN  : class      要关联的class指针
- * IN  : parent     父设备的指针
- * IN  : devt       关联的设备号
- * IN  : drvdata    设备回调函数的参数
- * IN  : fmt        device的名称格式化字符串
+ * @brief   建立设备节点
+ * @param   class   [IN] 要关联的class指针
+ * @param   parent  [IN] 父设备的指针
+ * @param   devt    [IN] 关联的设备号
+ * @param   drvdata [IN] 设备回调函数的参数
+ * @param   fmt     [IN] device的名称格式化字符串
+ * @return  非空指针，成功; ERR_PTR，失败
  */
 struct device *device_create(struct class *class, struct device *parent,
 			     dev_t devt, void *drvdata, const char *fmt, ...);
@@ -674,10 +671,10 @@ struct device *device_create(struct class *class, struct device *parent,
 
 ```c
 /*
- * 功能: 删除设备节点
- * 返回: none
- * IN  : class      设备节点关联的class指针
- * IN  : devt       要删除的设备节点的设备号
+ * @brief   删除设备节点
+ * @param   class   [IN] 设备节点关联的class指针
+ * @param   devt    [IN] 要删除的设备节点的设备号
+ * @return  无
  */
 void device_destroy(struct class *class, dev_t devt);
 ```
@@ -689,7 +686,7 @@ void device_destroy(struct class *class, dev_t devt);
 * platform模型
     * platform 是一个虚拟的地址总线，相比 PCI、USB，它主要用于描述SOC上的片上资源。
     * platform 所描述的资源有一个共同点：在CPU 的总线上直接取址。平台设备会分到一个名称(用在驱动绑定中)以及一系列诸如地址和中断请求号(IRQ)之类的资源
-    * 设备用 platform_device 表示；驱动用 platform_driver 进行注册。设备与驱动的两种绑定方式：在设备注册时进行绑定及在驱动注册时进行绑定。
+    * 设备用 `platform_device` 表示；驱动用 `platform_driver` 进行注册。设备与驱动的两种绑定方式：在设备注册时进行绑定及在驱动注册时进行绑定。
     * 以一个USB设备为例，有两种情形：
         * 先插上USB设备并挂到总线中，然后在安装USB驱动程序过程中从总线上遍历各个设备，看驱动程序是否与其相匹配，如果匹配就将两者邦定。这就是`platform_driver_register()`
         * 先安装USB驱动程序，然后当有USB设备插入时，那么就遍历总线上的各个驱动，看两者是否匹配，如果匹配就将其绑定。这就是`platform_device_register()`
@@ -751,12 +748,17 @@ struct platform_driver {
 };
 ```
 
-* 填充platform_driver的 suspend resume 做电源管理回调的方法目前已经过时，较好的做法是实现platform_driver的device_driver中的dev_pm_ops结构体成员
-* 与platform_driver地位对等的i2c_driver、spi_driver、usb_driver、pci_driver中都包含了device_driver结构体实例成员
+* 填充`platform_driver`的 suspend resume 做电源管理回调的方法目前已经过时，较好的做法是实现 `platform_driver` 的 `device_driver` 中的 `dev_pm_ops` 结构体成员
+* 与`platform_driver`地位对等的`i2c_driver`、`spi_driver`、`usb_driver`、`pci_driver`中都包含了`device_driver`结构体实例成员
 
 #### platform_driver_register 注册platform驱动
 
 ```c
+/*
+ * @brief   注册platform驱动
+ * @param   drv     [IN] platform驱动结构体指针
+ * @return  0，成功; <0，失败
+ */
 int driver_register(struct device_driver *drv)
 {
 	int ret;
@@ -809,6 +811,11 @@ int __platform_driver_register(struct platform_driver *drv,
 #### platform_driver_unregister 注销platform驱动
 
 ```c
+/*
+ * @brief   注销platform驱动
+ * @param   drv     [IN] platform驱动结构体指针
+ * @return  无
+ */
 void driver_remove_groups(struct device_driver *drv,
 			  const struct attribute_group **groups)
 {
@@ -1003,12 +1010,17 @@ struct platform_device {
 };
 ```
 
-* Linux 3.x之后，ARM Linux不太喜欢人们以编码(调用下面函数)的形式去填写platform_device和注册，而倾向于**根据设备树中的内容自动展开platform_device**。
+* Linux 3.x之后，ARM Linux不太喜欢人们以编码(调用下面函数)的形式去填写 `platform_device` 和注册，而倾向于**根据设备树中的内容自动展开platform_device**。
 * `/sys/devices/platform` 目录下会出现相应的设备
 
 #### platform_device_register 注册platform设备
 
 ```c
+/*
+ * @brief   注册platform设备
+ * @param   pdev    [IN] platform设备结构体指针
+ * @return  0，成功; <0，失败
+ */
 int platform_device_register(struct platform_device *pdev)
 {
 	device_initialize(&pdev->dev);
@@ -1023,6 +1035,11 @@ int platform_add_devices(struct platform_device **devs, int num);
 #### platform_device_unregister 注销platform设备
 
 ```c
+/*
+ * @brief   注销platform设备
+ * @param   pdev    [IN] platform设备结构体指针
+ * @return  无
+ */
 void platform_device_unregister(struct platform_device *pdev)
 {
 	platform_device_del(pdev); // 移除设备，销魂资源
@@ -1033,7 +1050,7 @@ void platform_device_unregister(struct platform_device *pdev)
 #### bus_type 总线
 
 ```c
-#include <device/bus.h>
+#include <linux/device/bus.h>
 struct bus_type {
 	const char *name; // 总线名称
 	const char *dev_name; // 枚举子系统设备名称，"foo%u", dev->id
@@ -1168,8 +1185,8 @@ node-name@unit-address
 
 * node-name： 是设备节点的名称，为ASCII字符串，节点名字应该能够清晰的描述出节点的功能，比如“uart1”就表示这个节点是UART1外设
 * unit-address： 一般表示设备的地址或寄存器首地址，如果某个节点没有地址或者寄存器的话 “unit-address” 可以不要
-	* 对于挂在内存空间的设备而言，@字符后跟的一般就是该设备在内存空间的基地址
-	* 对于挂在I2C总线上的外设而言，@后面一般跟的是从设备的I2C地址
+    * 对于挂在内存空间的设备而言，@字符后跟的一般就是该设备在内存空间的基地址
+    * 对于挂在I2C总线上的外设而言，@后面一般跟的是从设备的I2C地址
 * node-name相同的情况下，可以通过不同的unit-address定义不同的设备节点
 * 注：根节点没有node-name 或者 unit-address，它被定义为 `/`
 
@@ -1251,10 +1268,10 @@ another-device-node {
 
 * status 属性看名字就知道是和设备状态有关的， status 属性值也是字符串，字符串是设备的状态信息，可选的状态如下表所示：
 * status值描述
-	* okay: 表明设备是可操作的。
-	* disabled: 表明设备当前是不可操作的，但是在未来可以变为可操作的，比如热插拔设备插入以后。至于 disabled 的具体含义还要看设备的绑定文档。
-	* fail: 表明设备不可操作，设备检测到了一系列的错误，而且设备也不大可能变得可操作。
-	* fail-sss: 含义和“fail”相同，后面的 sss 部分是检测到的错误内容
+    * okay: 表明设备是可操作的。
+    * disabled: 表明设备当前是不可操作的，但是在未来可以变为可操作的，比如热插拔设备插入以后。至于 disabled 的具体含义还要看设备的绑定文档。
+    * fail: 表明设备不可操作，设备检测到了一系列的错误，而且设备也不大可能变得可操作。
+    * fail-sss: 含义和“fail”相同，后面的 sss 部分是检测到的错误内容
 
 #### address-cells 和 size-cells
 
@@ -1293,9 +1310,9 @@ reg = <0x3000 0x20 0xFE00 0x100>;
 
 * ranges 属性值可以为空或者按照 (child-bus-address,parent-bus-address,length) 格式编写的数字矩阵
 * ranges 是一个地址映射/转换表， ranges 属性每个项目由子地址、父地址和地址空间长度这三部分组成：
-	* child-bus-address： 子总线地址空间的物理地址，由父节点的 #address-cells 确定此物理地址所占用的字长。
-	* parent-bus-address： 父总线地址空间的物理地址，同样由父节点的 #address-cells 确定此物理地址所占用的字长。
-	* length： 子地址空间的长度，由父节点的 #size-cells 确定此地址长度所占用的字长。
+    * child-bus-address： 子总线地址空间的物理地址，由父节点的 #address-cells 确定此物理地址所占用的字长。
+    * parent-bus-address： 父总线地址空间的物理地址，同样由父节点的 #address-cells 确定此物理地址所占用的字长。
+    * length： 子地址空间的长度，由父节点的 #size-cells 确定此地址长度所占用的字长。
 
 ```c
 soc {
@@ -1492,7 +1509,12 @@ another-device-node {
 * 在Linux内核中，常常使用如下OF函数来判断根节点的兼容性：
 
 ```c
-int of_machine_is_compatible(const char *compat)
+/*
+ * @brief   判断根节点兼容性
+ * @param   compat  [IN] 要匹配的兼容字符串
+ * @return  正整数，匹配成功; 0，匹配失败
+ */
+int of_machine_is_compatible(const char *compat);
 ```
 
 * DT设备的.dt_compat可能包含多个电路板，通过该函数可以判断根节点compatible的属性，当该函数的compat参数与根据点的compatible匹配时，返回一个正整数。
@@ -1506,7 +1528,7 @@ of_machine_is_compatible("samsung,exynos4")
 #### device_node 设备节点
 
 * 设备都是以节点的形式“挂”到设备树上的，因此要想获取这个设备的其他属性信息，必须先获取到这个设备的节点。
-* Linux 内核使用 device_node 结构体来描述一个节点，此结构体定义在文件 include/linux/of.h 中，代码如下：
+* Linux 内核使用 `device_node` 结构体来描述一个节点，此结构体定义在文件 include/linux/of.h 中，代码如下：
 
 ```c
 struct device_node {
@@ -1536,102 +1558,110 @@ struct device_node {
 
 #### of_find_node_by_name 通过节点名字查找指定的节点
 
-* of_find_node_by_name 函数通过节点名字查找指定的节点，函数原型如下：
+* `of_find_node_by_name` 函数通过节点名字查找指定的节点，函数原型如下：
 
 ```c
-struct device_node *of_find_node_by_name(struct device_node *from, const char *name)
+/*
+ * @brief   通过节点名字查找指定的节点
+ * @param   from    [IN] 开始查找的节点，如果为 NULL 表示从根节点开始查找整个设备树
+ * @param   name    [IN] 要查找的节点名字
+ * @return  找到的节点，如果为 NULL 表示查找失败
+ */
+struct device_node *of_find_node_by_name(struct device_node *from, const char *name);
 ```
-
-* 函数参数和返回值含义如下：
-	* from： 开始查找的节点，如果为 NULL 表示从根节点开始查找整个设备树。
-	* name： 要查找的节点名字。
 
 #### of_find_node_by_type 通过 device_type 属性查找指定的节点
 
-* of_find_node_by_type 函数通过 device_type 属性查找指定的节点，函数原型如下：
+* `of_find_node_by_type` 函数通过 `device_type` 属性查找指定的节点，函数原型如下：
 
 ```c
-struct device_node *of_find_node_by_type(struct device_node *from, const char *type)
+/*
+ * @brief   通过 device_type 属性查找指定的节点
+ * @param   from    [IN] 开始查找的节点，如果为 NULL 表示从根节点开始查找整个设备树
+ * @param   type    [IN] 要查找的节点对应的 type 字符串，也就是 device_type 属性值
+ * @return  找到的节点，如果为 NULL 表示查找失败
+ */
+struct device_node *of_find_node_by_type(struct device_node *from, const char *type);
 ```
-
-* 函数参数和返回值含义如下：
-	* from： 开始查找的节点，如果为 NULL 表示从根节点开始查找整个设备树。
-	* type： 要查找的节点对应的 type 字符串，也就是 device_type 属性值。
-	* 返回值： 找到的节点，如果为 NULL 表示查找失败。
 
 #### of_find_compatible_node 根据 device_type 和 compatible 这两个属性查找指定的节点
 
-* of_find_compatible_node 函数根据 device_type 和 compatible 这两个属性查找指定的节点，函数原型如下：
+* `of_find_compatible_node` 函数根据 `device_type` 和 `compatible` 这两个属性查找指定的节点，函数原型如下：
 
 ```c
+/*
+ * @brief   根据 device_type 和 compatible 这两个属性查找指定的节点
+ * @param   from        [IN] 开始查找的节点，如果为 NULL 表示从根节点开始查找整个设备树
+ * @param   type        [IN] 要查找的节点对应的 type 字符串，也就是 device_type 属性值，可以为 NULL，表示忽略掉 device_type 属性
+ * @param   compatible  [IN] 要查找的节点所对应的 compatible 属性列表
+ * @return  找到的节点，如果为 NULL 表示查找失败
+ */
 struct device_node *of_find_compatible_node(struct device_node *from,
 											const char *type,
-											const char *compatible)
+											const char *compatible);
 ```
-
-* 函数参数和返回值含义如下：
-	* from： 开始查找的节点，如果为 NULL 表示从根节点开始查找整个设备树。
-	* type： 要查找的节点对应的 type 字符串，也就是 device_type 属性值，可以为 NULL，表示忽略掉 device_type 属性。
-	* compatible： 要查找的节点所对应的 compatible 属性列表。
-	* 返回值： 找到的节点，如果为 NULL 表示查找失败
 
 #### of_find_matching_node_and_match 通过 of_device_id 匹配表来查找指定的节点
 
-* of_find_matching_node_and_match 函数通过 of_device_id 匹配表来查找指定的节点，函数原型如下：
+* `of_find_matching_node_and_match` 函数通过 `of_device_id` 匹配表来查找指定的节点，函数原型如下：
 
 ```c
+/*
+ * @brief   通过 of_device_id 匹配表来查找指定的节点
+ * @param   from    [IN]  开始查找的节点，如果为 NULL 表示从根节点开始查找整个设备树
+ * @param   matches [IN]  of_device_id 匹配表，也就是在此匹配表里面查找节点
+ * @param   match   [OUT] 找到的匹配的 of_device_id
+ * @return  找到的节点，如果为 NULL 表示查找失败
+ */
 struct device_node *of_find_matching_node_and_match(struct device_node *from,
 													const struct of_device_id *matches,
-													const struct of_device_id **match)
+													const struct of_device_id **match);
 ```
-
-* 函数参数和返回值含义如下：
-	* from： 开始查找的节点，如果为 NULL 表示从根节点开始查找整个设备树。
-	* matches： of_device_id 匹配表，也就是在此匹配表里面查找节点。
-	* match： 找到的匹配的 of_device_id。
-	* 返回值： 找到的节点，如果为 NULL 表示查找失败
 
 #### of_find_node_by_path 通过路径来查找指定的节点
 
-* of_find_node_by_path 函数通过路径来查找指定的节点，函数原型如下：
+* `of_find_node_by_path` 函数通过路径来查找指定的节点，函数原型如下：
 
 ```c
-inline struct device_node *of_find_node_by_path(const char *path)
+/*
+ * @brief   通过路径来查找指定的节点
+ * @param   path    [IN] 带有全路径的节点名，可以使用节点的别名，比如“/backlight”就是 backlight 这个节点的全路径
+ * @return  找到的节点，如果为 NULL 表示查找失败
+ */
+inline struct device_node *of_find_node_by_path(const char *path);
 ```
-
-* 函数参数和返回值含义如下：
-	* path： 带有全路径的节点名，可以使用节点的别名，比如“/backlight”就是 backlight 这个节点的全路径。
-	* 返回值： 找到的节点，如果为 NULL 表示查找失败
 
 #### of_get_parent 获取指定节点的父节点
 
-* of_get_parent 函数用于获取指定节点的父节点，原型如下：
+* `of_get_parent` 函数用于获取指定节点的父节点，原型如下：
 
 ```c
-struct device_node *of_get_parent(const struct device_node *node)
+/*
+ * @brief   获取指定节点的父节点
+ * @param   node    [IN] 需要查找父节点的子节点
+ * @return  返回父节点
+ */
+struct device_node *of_get_parent(const struct device_node *node);
 ```
-
-* 函数参数和返回值含义如下：
-	* node： 需要查找父节点的子节点；
-	* 返回值： 返回父节点；
 
 #### of_get_next_child 查找下一个节点
 
-* of_get_next_child 函数用迭代的查找子节点，函数原型如下：
+* `of_get_next_child` 函数用迭代的查找子节点，函数原型如下：
 
 ```c
+/*
+ * @brief   查找下一个子节点
+ * @param   node    [IN] 父节点
+ * @param   prev    [IN] 前一个子节点，也就是从哪一个子节点开始迭代的查找下一个子节点。可以设置为NULL，表示从第一个子节点开始
+ * @return  找到的下一个子节点
+ */
 struct device_node *of_get_next_child(const struct device_node *node,
-									struct device_node *prev)
+									struct device_node *prev);
 ```
-
-* 函数参数和返回值含义如下：
-	* node： 父节点；
-	* prev： 前一个子节点，也就是从哪一个子节点开始迭代的查找下一个子节点。可以设置为NULL，表示从第一个子节点开始。
-	* 返回值： 找到的下一个子节点。
 
 #### property 节点属性
 
-* 节点的属性信息里面保存了驱动所需要的内容，因此对于属性值的提取非常重要， Linux 内核中使用结构体 property 表示属性，此结构体同样定义在文件 include/linux/of.h 中，内容如下：
+* 节点的属性信息里面保存了驱动所需要的内容，因此对于属性值的提取非常重要， Linux 内核中使用结构体 `property` 表示属性，此结构体同样定义在文件 include/linux/of.h 中，内容如下：
 
 ```c
 struct property {
@@ -1647,83 +1677,111 @@ struct property {
 
 #### of_find_property 查找指定的属性
 
-* of_find_property 函数用于查找指定的属性，函数原型如下：
+* `of_find_property` 函数用于查找指定的属性，函数原型如下：
 
 ```c
+/*
+ * @brief   查找指定的属性
+ * @param   np      [IN]  设备节点
+ * @param   name    [IN]  属性名字
+ * @param   lenp    [OUT] 属性值的字节数
+ * @return  找到的属性
+ */
 struct property *of_find_property(const struct device_node *np,
 							const char *name,
-							int *lenp)
+							int *lenp);
 ```
 
-* 函数参数和返回值含义如下：
-	* np： 设备节点；
-	* name： 属性名字；
-	* lenp： 属性值的字节数；
-	* 返回值： 找到的属性。
+* `of_property_count_elems_of_size` 获取属性中元素的数量
 
-* of_property_count_elems_of_size 获取属性中元素的数量
-
-* of_property_count_elems_of_size 函数用于获取属性中元素的数量，比如 reg 属性值是一个数组，那么使用此函数可以获取到这个数组的大小，此函数原型如下：
+* `of_property_count_elems_of_size` 函数用于获取属性中元素的数量，比如 reg 属性值是一个数组，那么使用此函数可以获取到这个数组的大小，此函数原型如下：
 
 ```c
+/*
+ * @brief   获取属性中元素的数量
+ * @param   np          [IN] 设备节点
+ * @param   propname    [IN] 需要统计元素数量的属性名字
+ * @param   elem_size   [IN] 元素长度
+ * @return  得到的属性元素数量
+ */
 int of_property_count_elems_of_size(const struct device_node *np,
 									const char *propname,
-									int elem_size)
+									int elem_size);
 ```
-
-* 函数参数和返回值含义如下：
-	* np： 设备节点。
-	* proname： 需要统计元素数量的属性名字。
-	* elem_size： 元素长度。
-	* 返回值： 得到的属性元素数量。
 
 #### of_property_read_u32_index 获取指定标号的 u32 类型数据值
 
-* of_property_read_u32_index 函数用于从属性中获取指定标号的 u32 类型数据值(无符号 32位)，比如某个属性有多个 u32 类型的值，那么就可以使用此函数来获取指定标号的数据值，此函数原型如下：
+* `of_property_read_u32_index` 函数用于从属性中获取指定标号的 u32 类型数据值(无符号 32位)，比如某个属性有多个 u32 类型的值，那么就可以使用此函数来获取指定标号的数据值，此函数原型如下：
 
 ```c
+/*
+ * @brief   获取指定标号的 u32 类型数据值
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   index       [IN]  要读取的值标号
+ * @param   out_value   [OUT] 读取到的值
+ * @return  0 读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小
+ */
 int of_property_read_u32_index(const struct device_node *np,
 								const char *propname,
 								u32 index,
-								u32 *out_value)
+								u32 *out_value);
 ```
-
-* 函数参数和返回值含义如下：
-	* np： 设备节点；
-	* proname： 要读取的属性名字；
-	* index： 要读取的值标号；
-	* out_value： 读取到的值；
-	* 返回值： 0 读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小。
 
 #### of_property_read_uxx_array 读取整型数组数据
 
 * 这 4 个函数分别是读取属性中 u8、 u16、 u32 和 u64 类型的数组数据，比如大多数的 reg 属性都是数组数据，可以使用这 4 个函数一次读取出 reg 属性中的所有数据。这四个函数的原型如下：
 
 ```c
+/*
+ * @brief   读取属性中 u8 类型的数组数据
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   out_values  [OUT] 读取到的数组值
+ * @param   sz          [IN]  要读取的数组元素数量
+ * @return  0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小
+ */
 int of_property_read_u8_array(const struct device_node *np,
 							const char *propname,
 							u8 *out_values,
-							size_t sz)
+							size_t sz);
+/*
+ * @brief   读取属性中 u16 类型的数组数据
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   out_values  [OUT] 读取到的数组值
+ * @param   sz          [IN]  要读取的数组元素数量
+ * @return  0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小
+ */
 int of_property_read_u16_array(const struct device_node *np,
 							const char *propname,
 							u16 *out_values,
-							size_t sz)
+							size_t sz);
+/*
+ * @brief   读取属性中 u32 类型的数组数据
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   out_values  [OUT] 读取到的数组值
+ * @param   sz          [IN]  要读取的数组元素数量
+ * @return  0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小
+ */
 int of_property_read_u32_array(const struct device_node *np,
 							const char *propname,
 							u32 *out_values,
-							size_t sz)
+							size_t sz);
+/*
+ * @brief   读取属性中 u64 类型的数组数据
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   out_values  [OUT] 读取到的数组值
+ * @param   sz          [IN]  要读取的数组元素数量
+ * @return  0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小
+ */
 int of_property_read_u64_array(const struct device_node *np,
 							const char *propname,
-							u64 *out_values
-							size_t sz)
+							u64 *out_values,
+							size_t sz);
 ```
-
-* 函数参数和返回值含义如下：
-	* np： 设备节点；
-	* proname： 要读取的属性名字；
-	* out_value： 读取到的数组值，分别为 u8、 u16、 u32 和 u64。
-	* sz： 要读取的数组元素数量。
-	* 返回值： 0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小。
 
 #### of_property_read_uxx 读取整型数据
 
@@ -1731,98 +1789,125 @@ int of_property_read_u64_array(const struct device_node *np,
 于读取 u8、 u16、 u32 和 u64 类型属性值，函数原型如下：
 
 ```c
+/*
+ * @brief   读取属性中 u8 类型数据
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   out_value   [OUT] 读取到的值
+ * @return  0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小
+ */
 int of_property_read_u8(const struct device_node *np,
 						const char *propname,
-						u8 *out_value)
+						u8 *out_value);
+/*
+ * @brief   读取属性中 u16 类型数据
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   out_value   [OUT] 读取到的值
+ * @return  0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小
+ */
 int of_property_read_u16(const struct device_node *np,
 						const char *propname,
-						u16 *out_value)
+						u16 *out_value);
+/*
+ * @brief   读取属性中 u32 类型数据
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   out_value   [OUT] 读取到的值
+ * @return  0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小
+ */
 int of_property_read_u32(const struct device_node *np,
 						const char *propname,
-						u32 *out_value)
+						u32 *out_value);
+/*
+ * @brief   读取属性中 u64 类型数据
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   out_value   [OUT] 读取到的值
+ * @return  0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小
+ */
 int of_property_read_u64(const struct device_node *np,
 						const char *propname,
-						u64 *out_value)
+						u64 *out_value);
 ```
 
-* 函数参数和返回值含义如下：
-	* np： 设备节点。
-	* proname： 要读取的属性名字。
-	* out_value： 读取到的数组值。
-	* 返回值： 0，读取成功，负值，读取失败， -EINVAL 表示属性不存在， -ENODATA 表示没有要读取的数据， -EOVERFLOW 表示属性值列表太小。
+#### of_property_read_string 读取属性中字符串值
 
-4.6 of_property_read_string 读取属性中字符串值
-
-* of_property_read_string 函数用于读取属性中字符串值，函数原型如下：
+* `of_property_read_string` 函数用于读取属性中字符串值，函数原型如下：
 
 ```c
+/*
+ * @brief   读取属性中字符串值
+ * @param   np          [IN]  设备节点
+ * @param   propname    [IN]  要读取的属性名字
+ * @param   out_string  [OUT] 读取到的字符串值
+ * @return  0，读取成功，负值，读取失败
+ */
 int of_property_read_string(struct device_node *np,
 							const char *propname,
-							const char **out_string)
+							const char **out_string);
 ```
-
-* 函数参数和返回值含义如下：
-	* np： 设备节点。
-	* proname： 要读取的属性名字。
-	* out_string： 读取到的字符串值。
-	* 返回值： 0，读取成功，负值，读取失败。
 
 #### of_n_addr_cells 获取 #address-cells 属性值
 
-* of_n_addr_cells 函数用于获取 #address-cells 属性值，函数原型如下：
+* `of_n_addr_cells` 函数用于获取 #address-cells 属性值，函数原型如下：
 
 ```c
-int of_n_addr_cells(struct device_node *np)
+/*
+ * @brief   获取 #address-cells 属性值
+ * @param   np      [IN] 设备节点
+ * @return  获取到的#address-cells 属性值
+ */
+int of_n_addr_cells(struct device_node *np);
 ```
-
-* 函数参数和返回值含义如下：
-	* np： 设备节点。
-	* 返回值： 获取到的#address-cells 属性值。
 
 #### of_n_size_cells 获取 #size-cells 属性值
 
-* of_size_cells 函数用于获取 #size-cells 属性值，函数原型如下：
+* `of_n_size_cells` 函数用于获取 #size-cells 属性值，函数原型如下：
 
 ```c
-int of_n_size_cells(struct device_node *np)
+/*
+ * @brief   获取 #size-cells 属性值
+ * @param   np      [IN] 设备节点
+ * @return  获取到的#size-cells 属性值
+ */
+int of_n_size_cells(struct device_node *np);
 ```
-
-* 函数参数和返回值含义如下：
-	* np： 设备节点。
-	* 返回值： 获取到的#size-cells 属性值。
 
 #### of_get_address 用于获取地址相关属性
 
-* of_get_address 函数用于获取地址相关属性，主要是“reg”或者“assigned-addresses”属性
+* `of_get_address` 函数用于获取地址相关属性，主要是“reg”或者“assigned-addresses”属性
 值，函数属性如下：
 
 ```c
+/*
+ * @brief   获取地址相关属性
+ * @param   dev     [IN]  设备节点
+ * @param   index   [IN]  要读取的地址标号
+ * @param   size    [OUT] 地址长度
+ * @param   flags   [OUT] 参数，比如 IORESOURCE_IO、 IORESOURCE_MEM 等
+ * @return  读取到的地址数据首地址，为 NULL 的话表示读取失败
+ */
 const __be32 *of_get_address(struct device_node *dev,
 							int index,
 							u64 *size,
-							unsigned int *flags)
+							unsigned int *flags);
 ```
-
-* 函数参数和返回值含义如下：
-	* dev： 设备节点。
-	* index： 要读取的地址标号。
-	* size： 地址长度。
-	* flags： 参数，比如 IORESOURCE_IO、 IORESOURCE_MEM 等
-	* 返回值： 读取到的地址数据首地址，为 NULL 的话表示读取失败。
 
 #### of_translate_address 将从设备树读取到的地址转换为物理地址
 
-* of_translate_address 函数负责将从设备树读取到的地址转换为物理地址，函数原型如下：
+* `of_translate_address` 函数负责将从设备树读取到的地址转换为物理地址，函数原型如下：
 
 ```c
+/*
+ * @brief   将从设备树读取到的地址转换为物理地址
+ * @param   dev     [IN] 设备节点
+ * @param   in_addr [IN] 要转换的地址
+ * @return  得到的物理地址，如果为 OF_BAD_ADDR 的话表示转换失败
+ */
 u64 of_translate_address(struct device_node *dev,
-						const __be32 *in_addr)
+						const __be32 *in_addr);
 ```
-
-* 函数参数和返回值含义如下：
-	* dev： 设备节点。
-	* in_addr： 要转换的地址。
-	* 返回值： 得到的物理地址，如果为 OF_BAD_ADDR 的话表示转换失败。
 
 #### of_address_to_resource 从设备树里面提取资源值
 
@@ -1838,33 +1923,35 @@ struct resource {
 };
 ```
 
-* of_address_to_resource 函数是从设备树里面提取资源值，但是本质上就是将 reg 属性值，然后将其转换为 resource 结构体类型，函数原型如下所示：
+* `of_address_to_resource` 函数是从设备树里面提取资源值，但是本质上就是将 reg 属性值，然后将其转换为 resource 结构体类型，函数原型如下所示：
 
 ```c
+/*
+ * @brief   从设备树里面提取资源值
+ * @param   dev     [IN]  设备节点
+ * @param   index   [IN]  地址资源标号
+ * @param   r       [OUT] 得到的 resource 类型的资源值
+ * @return  0，成功；负值，失败
+ */
 int of_address_to_resource(struct device_node *dev,
 							int index,
-							struct resource *r)
+							struct resource *r);
 ```
-
-* 函数参数和返回值含义如下：
-	* dev： 设备节点。
-	* index： 地址资源标号。
-	* r： 得到的 resource 类型的资源值。
-	* 返回值： 0，成功；负值，失败。
 
 #### of_iomap 函数
 
-* of_iomap 函数用于直接内存映射，以前我们会通过 ioremap 函数来完成物理地址到虚拟地址的映射，采用设备树以后就可以直接过 of_iomap 函数来获取内存地址所对应的虚拟地址，不需要使用 ioremap 函数了。该函数的原型如下：
+* `of_iomap` 函数用于直接内存映射，以前我们会通过 ioremap 函数来完成物理地址到虚拟地址的映射，采用设备树以后就可以直接过 `of_iomap` 函数来获取内存地址所对应的虚拟地址，不需要使用 ioremap 函数了。该函数的原型如下：
 
 ```c
+/*
+ * @brief   直接内存映射
+ * @param   np      [IN] 设备节点
+ * @param   index   [IN] reg 属性中要完成内存映射的段，如果 reg 属性只有一段的话 index 就设置为 0
+ * @return  经过内存映射后的虚拟内存首地址，如果为 NULL 的话表示内存映射失败
+ */
 void __iomem *of_iomap(struct device_node *np,
-						int index)
+						int index);
 ```
-
-* 函数参数和返回值含义如下：
-	* np： 设备节点。
-	* index： reg 属性中要完成内存映射的段，如果 reg 属性只有一段的话 index 就设置为 0。
-	* 返回值： 经过内存映射后的虚拟内存首地址，如果为 NULL 的话表示内存映射失败。
 
 ### of platform 函数族
 
@@ -1874,10 +1961,15 @@ void __iomem *of_iomap(struct device_node *np,
 
 #### of_find_device_by_node 返回该设备对应的platform_device结构
 
-* 根据device_node查找返回该设备对应的platform_device结构
+* 根据`device_node`查找返回该设备对应的`platform_device`结构
 
 ```c
-struct platform_device* of_find_device_by_node(struct device_node *np)
+/*
+ * @brief   根据device_node查找返回该设备对应的platform_device结构
+ * @param   np      [IN] 设备节点
+ * @return  对应的platform_device结构指针
+ */
+struct platform_device* of_find_device_by_node(struct device_node *np);
 ```
 
 ## 基本编程
@@ -1929,19 +2021,19 @@ static inline bool __must_check IS_ERR_OR_NULL(__force const void *ptr)
 ### ioctl宏
 
 * 获取属性
-    * _IOC_NR(cmd) : 读取基数域值 (bit0~ bit7)，区分命令顺序序号，通常，从0开始递增
-    * _IOC_TYPE(cmd) : 读取魔数域值 (bit8 ~ bit15)，与其它设备驱动程序的 ioctl 命令进行区别，通常，用英文字符 'A' ~ 'Z' 或者 'a' ~ 'z' 来表示
-    * _IOC_SIZE(cmd) : 读取数据大小域值 (bit16 ~ bit29)，ioctl()中的arg 变量传送的内存大小，传入的是代入变量的类型
-    * _IOC_DIR(cmd) : 获取读写属性域值 (bit30 ~ bit31)，区分是读取命令还是写入命令
-        * _IOC_NONE                 : 无属性
-        * _IOC_READ                 : 可读属性
-        * _IOC_WRITE                : 可写属性
-        * _IOC_READ | _IOC_WRITE    : 可读写属性
+    * `_IOC_NR(cmd)` : 读取基数域值 (bit0~ bit7)，区分命令顺序序号，通常，从0开始递增
+    * `_IOC_TYPE(cmd)` : 读取魔数域值 (bit8 ~ bit15)，与其它设备驱动程序的 ioctl 命令进行区别，通常，用英文字符 'A' ~ 'Z' 或者 'a' ~ 'z' 来表示
+    * `_IOC_SIZE(cmd)` : 读取数据大小域值 (bit16 ~ bit29)，ioctl()中的arg 变量传送的内存大小，传入的是代入变量的类型
+    * `_IOC_DIR(cmd)` : 获取读写属性域值 (bit30 ~ bit31)，区分是读取命令还是写入命令
+        * `_IOC_NONE`                 : 无属性
+        * `_IOC_READ`                 : 可读属性
+        * `_IOC_WRITE`                : 可写属性
+        * `_IOC_READ | _IOC_WRITE`    : 可读写属性
 * 设置cmd
-    * _IO  (魔数, 基数)             : 没有可传送的变量，只是用于传送命令
-    * _IOR (魔数, 基数, 变量类型)   : 读取数据的命令
-    * _IOW (魔数, 基数, 变量类型)   : 写入数据的命令
-    * _IOWR(魔数, 基数, 变量类型)   : 读写数据的命令
+    * `_IO  (魔数, 基数)`             : 没有可传送的变量，只是用于传送命令
+    * `_IOR (魔数, 基数, 变量类型)`   : 读取数据的命令
+    * `_IOW (魔数, 基数, 变量类型)`   : 写入数据的命令
+    * `_IOWR(魔数, 基数, 变量类型)`   : 读写数据的命令
 
 ## 内存
 
@@ -1962,7 +2054,7 @@ static inline bool __must_check IS_ERR_OR_NULL(__force const void *ptr)
     * CPU中有一个专门的部分称为MMU(Memory Management Unit，内存管理单元)，该单元优化了内存访问操作。该单元辅助操作系统进行内存管理，提供虚拟地址和物理地址的映射、内存访问权限保护和Cache缓存控制等硬件支持。
         * TLB(Translation Lookaside Buffer) : 地址转换后备缓冲器，MMU的核心部件，缓存少量的虚拟地址(地址转换中出现最频繁的那些地址)与物理地址的转换关系，是转换表的Cache，因此也经常被称为“快表”
         * TTW(Translation Table walk)：即转换表漫游，当TLB中没有缓冲对应的地址转换关系时，需要通过对内存中转换表的访问来获得虚拟地址和物理地址的对应关系。TTW成功后，结果应写入TLB中。
-<p/>
+
 
 * 伙伴系统 `/proc/buddyinfo`:
     * 把空闲的页面以2的n次方为单位进行管理
@@ -1975,12 +2067,12 @@ static inline bool __must_check IS_ERR_OR_NULL(__force const void *ptr)
         * 对通常情况下小内存块的分配，内核针对不同大小的对象定义了一组slab缓存，可以像用户空间编程一样，用相同的函数访问这些缓存。不同之处是这些函数都增加了前缀k，表明是与内核相关联的: kmalloc和kfree。
     * slab分配器扮演了通用数据结构缓存层的角色。slab层把不同的对象划分为不同的高速缓存组。slab处于的状态有:满、部分满、空。多CPU中，持续不断的缓存失效称为缓存抖动。
     * 注: 对真正微小的嵌入式系统来说，slab分配器的开销可能又太大了。内核提供了slab分配器的两种备选方案，可用于在相应的场景下替换slab分配器并提供更好的性能。
-<p/>
+
 
 * 页面交换和页面回收
     * 页面交换通过利用磁盘空间作为扩展内存，从而增大了可用的内存。在内核需要更多内存时，不经常使用的页可以写入硬盘，换出的页可以通过特别的页表项标识。在进程试图访问此类页帧时，CPU则启动一个可以被内核截取的缺页异常，此时内核可以将硬盘上的数据切换到内存中，接下来用户进程可以恢复运行。
     * 页面回收用于将内存映射被修改的内容与底层的块设备同步，为此有时也简称为数据回写。
-<p/>
+
 
 * 页的区域
     * 处理器的最小可寻址单位是字(甚至字节)，但内核把物理页作为内存管理的基本单位。大多数32位体系架构支持4KB的页，64位体系架构一般支持8KB的页。
@@ -2000,15 +2092,15 @@ static inline bool __must_check IS_ERR_OR_NULL(__force const void *ptr)
         * 某些体系架构中所有内存都能被直接映射，则ZONE_HIGHMEM为空。
 * 注意: 分配内存不能同时从不同区分配。分配内存的核心函数是 `alloc_pages` `<linux/gfp.h>` ，返回指向第一个页的 page 结构体。
 * C库的malloc()函数一般通过brk()和mmap()两个系统调用从内核申请内存。
-<p/>
+
 
 * ddr内存设备管理
 	* linux内核中一般定义(ddr)内存的物理地址为 PHY_OFFSET ；将 PHY_OFFSET 映射之后的、linux内核空间的、虚拟地址，定义为其 PAGE_OFFSET ，是值为3g。
 	* 内存中的前面部分内存存放内存映射表等相关内存，真正使用的是不是最开始，而是最开始后面的某处为起点的内容。
 	* linux中，使用 ioremap 可以将整个4G中的物理地址进行 remap ，之后用返回的虚拟地址访问各种设备。
 	* linux内核中的各种内存函数（例如 vmalloc , kmalloc ）只是对ddr内存进行管理。
-	* linux的内存管理函数 kmalloc 以及 get_free_pages 之类的函数返回的只是内核管理内存的虚拟空间（ PAGE_OFFSET 为其起点）中的一部分，这个部分和物理地址 PHY_OFFSET 是线性映射的，可以用 _pa 和 _va 宏进行物理地址和虚拟地址之间的转换。
-	* vmalloc 返回的地址也是内存映射之后的虚拟空间的一部分，但是不能用 _pa 和 _va 宏转换，因为它返回的内核虚拟地址不是和物理地址线性映射的。
+	* linux的内存管理函数 kmalloc 以及 get_free_pages 之类的函数返回的只是内核管理内存的虚拟空间（ PAGE_OFFSET 为其起点）中的一部分，这个部分和物理地址 PHY_OFFSET 是线性映射的，可以用 `_pa` 和 `_va` 宏进行物理地址和虚拟地址之间的转换。
+	* vmalloc 返回的地址也是内存映射之后的虚拟空间的一部分，但是不能用 `_pa` 和 `_va` 宏转换，因为它返回的内核虚拟地址不是和物理地址线性映射的。
 	* 内存通过mmu管理的时候，mmu表项存放物理和虚拟地址映射关系，mmu通过这个表项进行初始化，使用mmu管理的时候只能访问虚拟地址，如果一个虚拟地址没有在表项中映射过，那么访问这个地址就会有问题，所以通过mmu访问一个地址，那么这个地址必然是虚拟地址，并且虚拟地址在mmu表中要添加相应的表项。另外，mmu映射的大小单位至少是一页。
 	* 当然如果dma方式的话，就不需要这个虚拟地址物理地址映射了，直接给出地址进行访问。
 	* 还有一个就是对于外设寄存器映射，可能多个外设在同一个总线的地址空间上面，这样想要使用相应的寄存器的地址进行访问，只需要映射一下相应的总线，就行了，不用对所有的寄存器都进行映射。
@@ -2017,20 +2109,20 @@ static inline bool __must_check IS_ERR_OR_NULL(__force const void *ptr)
 
 ```c
 /*
- * 功能: 分配物理地址上是连续的内核内存
- * 返回: 非空指针，成功; NULL，失败
- * IN  : size       要分配的内存大小
- * IN  : flags      内存分配的标志
- *      GFP_KERNEL  最常用的申请内存标记，若不存在空闲页，进程会阻塞睡眠，不能用于中断上下文和持有自旋锁时
- *      GFP_ATOMIC  可用于中断上下文，若不存在空闲页，则不等待，直接返回
- *      GFP_USER    用来为用户空间页来分配内存，可能睡眠
- *      GFP_HIGHUSER类似GFP_USER, 但是从高端内存分配
- *      GFP_DMA     给DMA控制器分配内存(DMA要求分配虚拟地址和物理地址连续)
- *      GFP_NOIO    不允许任何I/O初始化
- *      GFP_NOFS    不允许进行任何文件系统调用
- * 说明：1、使用kfree释放分配的内存
- * 2、申请的地址与真实的物理地址只有一个固定的偏移，因为存在较简单的转换关系，所以对申请的内存大小有限制，不能超过128KB
- * 3、kmalloc()的底层依赖于__get_free_pages()来实现，缩写是分配标志的前缀GFP
+ * @brief   分配物理地址上是连续的内核内存
+ * @param   size    [IN] 要分配的内存大小
+ * @param   flags   [IN] 内存分配的标志
+ *                      GFP_KERNEL  最常用的申请内存标记，若不存在空闲页，进程会阻塞睡眠，不能用于中断上下文和持有自旋锁时
+ *                      GFP_ATOMIC  可用于中断上下文，若不存在空闲页，则不等待，直接返回
+ *                      GFP_USER    用来为用户空间页来分配内存，可能睡眠
+ *                      GFP_HIGHUSER类似GFP_USER, 但是从高端内存分配
+ *                      GFP_DMA     给DMA控制器分配内存(DMA要求分配虚拟地址和物理地址连续)
+ *                      GFP_NOIO    不允许任何I/O初始化
+ *                      GFP_NOFS    不允许进行任何文件系统调用
+ * @return  非空指针，成功; NULL，失败
+ * @note    1、使用kfree释放分配的内存
+ *          2、申请的地址与真实的物理地址只有一个固定的偏移，因为存在较简单的转换关系，所以对申请的内存大小有限制，不能超过128KB
+ *          3、kmalloc()的底层依赖于__get_free_pages()来实现，缩写是分配标志的前缀GFP
  */
 #include <linux/slab.h>
 void *kmalloc(size_t size, gfp_t flags);
@@ -2051,13 +2143,13 @@ void kfree(const void *objp);
 
 ```c
 /*
- * 功能: 分配多个页并返回分配内存的首地址
- * 返回: 非空指针，成功; NULL，失败
- * IN  : gfp_mask   内存分配的标志
- * IN  : order      要分配的内存大小，2的order次方页
- * 说明：1、使用free_pages释放分配的内存
- * 2、order允许的最大值是10或11，取决于具体的硬件平台
- * 3、使用 int get_order(unsigned long size) 获取计算orger
+ * @brief   分配多个页并返回分配内存的首地址
+ * @param   gfp_mask [IN] 内存分配的标志
+ * @param   order    [IN] 要分配的内存大小，2的order次方页
+ * @return  非空指针，成功; NULL，失败
+ * @note    1、使用free_pages释放分配的内存
+ *          2、order允许的最大值是10或11，取决于具体的硬件平台
+ *          3、使用 int get_order(unsigned long size) 获取计算orger
  */
 #include <linux/gfp.h>
 unsigned long __get_free_pages(gfp_t gfp_mask, unsigned int order);
@@ -2075,12 +2167,12 @@ void free_pages(unsigned long addr, unsigned int order);
 
 ```c
 /*
- * 功能: 分配物理地址上是连续的内核内存
- * 返回: 非空指针，成功; NULL，失败
- * IN  : size       要分配的内存大小
- * 说明：1、使用vfree释放分配的内存
- * 2、对申请的内存大小没有限制，如果需要申请较大的内存空间就需要用此函数
- * 3、vmalloc在申请内存时，会进行内存的映射，改变页表项，远大于kmalloc的开销
+ * @brief   分配虚拟地址上是连续的内核内存
+ * @param   size    [IN] 要分配的内存大小
+ * @return  非空指针，成功; NULL，失败
+ * @note    1、使用vfree释放分配的内存
+ *          2、对申请的内存大小没有限制，如果需要申请较大的内存空间就需要用此函数
+ *          3、vmalloc在申请内存时，会进行内存的映射，改变页表项，远大于kmalloc的开销
  */
 #include <linux/vmalloc.h>
 void *vmalloc(unsigned long size);
@@ -2231,11 +2323,11 @@ static inline void local_bh_disable(void)
 ```
 
 * Linux内核的进程调度、异步I/O等很多重要操作都依赖中断来实现，这就要求在屏蔽了中断之后，当前的内核执行路径应当尽快地执行完临界区的代码。
-* local_irq_disable() 只能禁止本CPU内的中断，并不能解决SMP多CPU引发的竞态。相反操作 local_irq_enable()
-* local_irq_save(flags) 除了进行禁止中断的操作以外，还保存目前CPU的中断位信息(flags为unsigned long值, ARM为CPSR寄存器的值)。相反操作 local_irq_restore(flags)
-    * local_irq_save的调用把当前的中断状态(开或关)保存到flags中，然后禁用当前处理器上的中断。
-    * local_irq_restore将保存的flags状态值恢复(即local_irq_save的入参flag), 恢复之前的状态(开或关)。
-* local_bh_disable() 仅仅只是关闭本CPU的底半部(软中断和tasklet)。相反操作 local_bh_enable()
+* `local_irq_disable()` 只能禁止本CPU内的中断，并不能解决SMP多CPU引发的竞态。相反操作 `local_irq_enable()`
+* `local_irq_save(flags)` 除了进行禁止中断的操作以外，还保存目前CPU的中断位信息(flags为unsigned long值, ARM为CPSR寄存器的值)。相反操作 `local_irq_restore(flags)`
+    * `local_irq_save`的调用把当前的中断状态(开或关)保存到flags中，然后禁用当前处理器上的中断。
+    * `local_irq_restore`将保存的flags状态值恢复(即`local_irq_save`的入参flag), 恢复之前的状态(开或关)。
+* `local_bh_disable()` 仅仅只是关闭本CPU的底半部(软中断和tasklet)。相反操作 `local_bh_enable()`
 
 ### 自旋锁(spinlock)
 
@@ -2269,13 +2361,13 @@ spin_lock_bh() = local_bh_disable() + spin_lock()
 spin_unlock_bh() = spin_unlock() + local_bh_enable()
 ```
 
-* spin_lock 如果能够立即获得锁，它就马上返回；否则，它将在那里自旋，直到该自旋锁的保持者释放。
-* spin_trylock 尝试获得自旋锁lock，如果能立即获得锁，它获得锁并返回true；否则立即返回false。
+* `spin_lock` 如果能够立即获得锁，它就马上返回；否则，它将在那里自旋，直到该自旋锁的保持者释放。
+* `spin_trylock` 尝试获得自旋锁lock，如果能立即获得锁，它获得锁并返回true；否则立即返回false。
 * 自旋锁实际上是忙等锁，当锁不可用时，CPU一直循环执行“测试并设置”该锁直到可用而取得该锁，CPU在等待自旋锁时不做任何有用的工作，仅仅是等待。
 * 只有在占用锁的时间极短的情况下，使用自旋锁才是合理的。当临界区很大，或有共享设备的时候，需要较长时间占用锁，使用自旋锁会降低系统的性能。
-* 自旋锁加锁会进行关调度的操作，在自旋锁锁定期间不能调用可能引起进程调度的函数。如果进程获得自旋锁之后再阻塞，如调用copy_from_user()、copy_to_user()、kmalloc()和msleep()等函数，则可能导致内核的崩溃。
+* 自旋锁加锁会进行关调度的操作，在自旋锁锁定期间不能调用可能引起进程调度的函数。如果进程获得自旋锁之后再阻塞，如调用`copy_from_user()`、`copy_to_user()`、`kmalloc()`和`msleep()`等函数，则可能导致内核的崩溃。
 * 如果一个已经拥有某个自旋锁的CPU想第二次获得这个自旋锁，则该CPU将死锁。
-* 如果进程和中断可能访问同一片临界资源，我们一般需要在进程上下文中调用 spin_lock_irqsave() / spin_unlock_irqrestore() ，(SMP需要)在中断上下文中调用 spin_lock() / spin_unlock()。
+* 如果进程和中断可能访问同一片临界资源，我们一般需要在进程上下文中调用 `spin_lock_irqsave()` / `spin_unlock_irqrestore()` ，(SMP需要)在中断上下文中调用 `spin_lock()` / `spin_unlock()`。
 * ARM自旋锁的实现借用了ldrex指令、strex指令、ARM处理器内存屏障指令dmb和sb、wfe指令和sev指令
 
 ### 读写自旋锁(rwlock)
@@ -2371,7 +2463,7 @@ void up(struct semaphore *sem);
 * down族函数获取信号量，P(S)：①将信号量S的值减1，即S=S-1；②如果S≥0，则该进程继续执行；否则该进程置为等待状态，排入等待队列
     * down 不可中断，进入睡眠状态的进程不能被信号打断一般避免在驱动中调用
     * down_interruptible 进入睡眠状态的进程能被信号打断，信号也会导致该函数返回，这时候函数的返回值非0，驱动中常用
-        * 在使用down_interruptible()获取信号量时，对返回值一般会进行检查，如果非0，通常立即返回-ERESTARTSYS
+        * 在使用`down_interruptible()`获取信号量时，对返回值一般会进行检查，如果非0，通常立即返回-ERESTARTSYS
     * down_killable 进入睡眠状态的进程能被致命性信号打断，驱动中很少用
     * down_trylock 尝试获得信号量sem，如果能够立刻获得，它就获得该信号量并返回0，否则，返回非0值，它不会导致调用者睡眠，可以在中断上下文中使用
     * down_timeout 有超时的down
@@ -2420,7 +2512,7 @@ void mutex_unlock(struct mutex *lock);
 * 互斥锁和自旋锁选择方法
     1. 当锁不能被获取到时，使用互斥锁的开销是进程上下文切换时间，使用自旋锁的开销是等待获取自旋锁(由临界区执行时间决定)。若临界区比较小，宜使用自旋锁，若临界区很大，应使用互斥锁。
     2. 互斥锁所保护的临界区可包含可能引起阻塞的代码，而自旋锁则绝对要避免用来保护包含这样代码的临界区。因为阻塞意味着要进行进程的切换，如果进程被切换出去后，另一个进程企图获取本自旋锁，死锁就会发生。
-    3. 互斥锁存在于进程上下文，因此，如果被保护的共享资源需要在中断或软中断情况下使用，则在互斥锁和自旋锁之间只能选择自旋锁。当然，如果一定要使用互斥锁，则只能通过mutex_trylock方式进行，不能获取就立即返回以避免阻塞。
+    3. 互斥锁存在于进程上下文，因此，如果被保护的共享资源需要在中断或软中断情况下使用，则在互斥锁和自旋锁之间只能选择自旋锁。当然，如果一定要使用互斥锁，则只能通过`mutex_trylock`方式进行，不能获取就立即返回以避免阻塞。
     4. 同一时间只能有一个任务持有互斥锁，而且只有这个任务可以对互斥锁进行解锁。
 
 ### 完成量(completion)
@@ -2472,8 +2564,8 @@ void rcu_read_unlock_bh(void);
 void synchronize_rcu(void); // 写同步RCU，会睡眠
 ```
 
-* rcu_read_lock/rcu_read_unlock用来标记一个RCU读过程的开始和结束，其实作用就是帮助检测宽限期是否结束。
-* synchronize_rcu()，调用该函数意味着一个宽限期的开始，而直到宽限期结束，该函数才会返回。
+* `rcu_read_lock`/`rcu_read_unlock`用来标记一个RCU读过程的开始和结束，其实作用就是帮助检测宽限期是否结束。
+* `synchronize_rcu()`，调用该函数意味着一个宽限期的开始，而直到宽限期结束，该函数才会返回。
 * 使用RCU的读端没有锁、内存屏障、原子指令类的开销，几乎可以认为是直接读(只是简单地标明读开始和读结束)，而RCU的写执行单元在访问它的共享资源前首先复制一个副本，然后对副本进行修改，最后使用一个回调机制在适当的时机把指向原来数据的指针重新指向新的被修改的数据，这个时机就是所有引用该数据的CPU都退出对共享数据读操作的时候。等待适当时机的这一时期称为宽限期(Grace Period)。
 * RCU可以看作读写锁的高性能版本，相比读写锁，RCU的优点在于既允许多个读执行单元同时访问被保护的数据，又允许多个读执行单元和多个写执行单元同时访问被保护的数据。但是，RCU不能替代读写锁，因为如果写比较多时，对读执行单元的性能提高不能弥补写执行单元同步导致的损失。因为使用RCU时，写执行单元之间的同步开销会比较大，它需要延迟数据结构的释放，复制被修改的数据结构，它也必须使用某种锁机制来同步并发的其他写执行单元的修改操作。
 * RCU主要针对的数据对象是链表，目的是提高遍历读取数据的效率，为了达到目的使用RCU机制读取数据的时候不对链表进行耗时的加锁操作。这样在同一时间可以有多个线程同时读取该链表，并且允许一个线程对链表进行修改(修改的时候，需要加锁)。RCU适用于需要频繁的读取数据，而相应修改数据并不多的情景。
@@ -2483,7 +2575,7 @@ void synchronize_rcu(void); // 写同步RCU，会睡眠
 ### 等待队列(wait)
 
 * 在 Linux 驱动程序设计中，可以使用等待队列来实现进程的阻塞。 等待队列可以看作保存进程的容器，在阻塞进程时，将进程放入等待队列；当唤醒进程时，从等待队列中取出进程。
-* 等待队列以循环链表为基础结构，链表头和链表项分别为等待队列头和等待队列元素，分别用结构体 wait_queue_head_t 和 wait_queue_entry_t 描述
+* 等待队列以循环链表为基础结构，链表头和链表项分别为等待队列头和等待队列元素，分别用结构体 `wait_queue_head_t` 和 `wait_queue_entry_t` 描述
 
 #### 等待队列结构体
 
@@ -2507,7 +2599,7 @@ typedef struct wait_queue_head wait_queue_head_t;
 ```
 
 * flags标志 `WQ_FLAG_EXCLUSIVE`
-    * 等待队列元素设置 WQ_FLAG_EXCLUSIVE 标志时，会被添加到等待队列的尾部，而非头部
+    * 等待队列元素设置 `WQ_FLAG_EXCLUSIVE` 标志时，会被添加到等待队列的尾部，而非头部
     * 在某等待队列上调用 wake up 时，执行独占等待的进程每次只会唤醒其中第一个（所有非独占等待进程仍会被同时唤醒）
 
 #### 等待队列的创建和初始化
@@ -2575,9 +2667,9 @@ void add_wait_queue_exclusive(struct wait_queue_head *wq_head, struct wait_queue
 void remove_wait_queue(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry);
 ```
 
-* add_wait_queue 在等待队列头部添加普通的等待队列元素（非独占等待，清除 WQ_FLAG_EXCLUSIVE 标志）
-* add_wait_queue_exclusive 在等待队列尾部添加独占等待队列元素（设置了 WQ_FLAG_EXCLUSIVE 标志）
-* remove_wait_queue 将等待队列元素 wq_entry 从等待队列 wq_head 中移除
+* `add_wait_queue` 在等待队列头部添加普通的等待队列元素（非独占等待，清除 `WQ_FLAG_EXCLUSIVE` 标志）
+* `add_wait_queue_exclusive` 在等待队列尾部添加独占等待队列元素（设置了 `WQ_FLAG_EXCLUSIVE` 标志）
+* `remove_wait_queue` 将等待队列元素 `wq_entry` 从等待队列 `wq_head` 中移除
 
 #### 等待事件
 
@@ -2590,7 +2682,7 @@ wait_event_interruptible_timeout(wq_head, condition, tjiffies) // 成功返回�
 
 * 步骤
     * 将当前进程关联的等待队列元素加入到等待队列中
-    * 设置当前进程状态(可中断 TASK_INTERRUPTIBLE 或不可中断 TASK_UNINTERRUPTIBLE)
+    * 设置当前进程状态(可中断 `TASK_INTERRUPTIBLE` 或不可中断 `TASK_UNINTERRUPTIBLE`)
     * 判断资源是否得到，或是否捕获中断信号
     * 进程让出调度器，进入休眠状态
     * 资源得到满足时(或超时时)，将等待队列元素从等待队列中移除
@@ -2605,15 +2697,15 @@ void __wake_up(struct wait_queue_head *wq_head, unsigned int mode, int nr, void 
 #define wake_up_interruptible_all(x)	__wake_up(x, TASK_INTERRUPTIBLE, 0, NULL)
 ```
 
-* wake_up 可以用来唤醒等待队列上的所有进程，一般和 wait_event* 搭配使用(注：wake_up可唤醒wait_event_interruptible)
-* wake_up_interruptible() 只会唤醒那些执行可中断休眠的进程，和 wait_event_interruptible* 搭配使用
+* `wake_up` 可以用来唤醒等待队列上的所有进程，一般和 `wait_event*` 搭配使用(注：wake_up可唤醒wait_event_interruptible)
+* `wake_up_interruptible()` 只会唤醒那些执行可中断休眠的进程，和 `wait_event_interruptible*` 搭配使用
 * nr 表示wakeup的数目
 
 ### 轮询poll
 
 * 内核中对应的需要编写的接口：`__poll_t (*poll) (struct file *, struct poll_table_struct *);`
     * 返回值`__poll_t` 是 `unsigned` 类型，返回设备资源的可获取状态，即POLLIN、POLLOUT、POLLPRI、POLLERR、POLLNVAL等宏的位“或”结果
-* `poll_wait` 函数所做的工作是把当前进程添加到等待列表poll_table中，实际作用是让wait_queue_head_t对应的等待队列可以唤醒因select/poll/epoll而睡眠的进程
+* `poll_wait` 函数所做的工作是把当前进程添加到等待列表poll_table中，实际作用是让`wait_queue_head_t`对应的等待队列可以唤醒因select/poll/epoll而睡眠的进程
     * `wait_address` 是消息队列头，一般在模块加载函数调用 `init_waitqueue_head()` 初始化它，中断中调用 `wait_event_interruptible*()` 唤醒它
     * **poll_wait** 函数是一个非阻塞函数，
     * 如果不调用poll_wait函数，应用进程还是一直在休眠状态无法立即从休眠状态变为可执行态并被调度执行，直到poll函数超时
@@ -2686,55 +2778,86 @@ static inline void poll_wait(struct file * filp, wait_queue_head_t * wait_addres
 ### 禁止底半部(local_bh_disable / local_bh_enable)
 
 * 一般单纯禁止底半部的处理是不够的。为了保证共享数据的安全，更常见的做法是，先得到一个锁然后再禁止底半部的处理。驱动程序中通常使用的都是这种方法。然而，如果你编写的是内核的核心代码，你也可能仅需要禁止底半部就可以了。
-* 如果需要禁止所有的底半部处理(明确点说，就是所有的软中断和所有的tasklet) , 可以调用local_bh_disable()函数。允许底半部进行处理，可以调用local_bh_enable()函数。
-* 这些函数有可能被嵌套使用：最后被调用的local_bh_enable()最终激活底半部。比如， 一次调用local_bh_disable()，则本地软中断处理被禁止；如果local_bh_disable()被调用三次，则本地处理仍然被禁止；只有当第四次调用local_bh_enable()时，软中断处理才被重新激活
-* 函数通过preempt_count(很有意思，还是这个计数器，内核抢占的时候用的也是它)为每个进程维护一个计数器 。当计数器变为0时，底半部才能够被处理。因为底半部的处理已经被禁止，所以local_bh_enable()函数还需要检査所有现存的待处理的底半部并执行它们。
+* 如果需要禁止所有的底半部处理(明确点说，就是所有的软中断和所有的tasklet) , 可以调用`local_bh_disable()`函数。允许底半部进行处理，可以调用`local_bh_enable()`函数。
+* 这些函数有可能被嵌套使用：最后被调用的`local_bh_enable()`最终激活底半部。比如， 一次调用`local_bh_disable()`，则本地软中断处理被禁止；如果`local_bh_disable()`被调用三次，则本地处理仍然被禁止；只有当第四次调用`local_bh_enable()`时，软中断处理才被重新激活
+* 函数通过preempt_count(很有意思，还是这个计数器，内核抢占的时候用的也是它)为每个进程维护一个计数器 。当计数器变为0时，底半部才能够被处理。因为底半部的处理已经被禁止，所以`local_bh_enable()`函数还需要检査所有现存的待处理的底半部并执行它们。
 * 这些函数并不能禁止工作队列的执行。因为工作队列是在进程上下文中运行的，不会涉及异步执行的问题，所以也就没有必要禁止它们执行。由于软中断和tasklet是异步发生的(就是说，在中断处理返回的时候)，所以，内核代码必须禁止它们。另一方面，对于工作队列来说，它保护共享数据所做的工作和其他任何进程上下文中所做的都差不多。
 
 ### request_irq / free_irq - 将回调函数在中断线上挂载/卸载
 
 ```c
 /*
- * 功能: 将回调函数挂载在中断线上
- * 返回: 0，成功; <0，失败
- * IN  : irq        要挂载的中断线
- * IN  : handler    挂载的函数，发生中断时调用的回调函数，顶半部
- * IN  : flags      指定中断的触发方式以及处理方式
- * IN  : irq        要挂载的中断线
- * IN  : name       中断名称
- * IN  : dev        中断时传递给回调函数的参数
- * 触发方式: IRQF_TRIGGER_RISING、IRQF_TRIGGER_FALLING、IRQF_TRIGGER_HIGH、IRQF_TRIGGER_LOW
- * 处理方式: IRQF_SHARED 表示多个设备共享中断，一个设备以IRQF_SHARED申请某中断成功的前提是该中断未被申请，或该中断虽然被申请了，但是之前申请该中断的所有设备也都以IRQF_SHARED标志申请该中断
- * 需要用free_irq卸载
+ * @brief   将回调函数挂载在中断线上
+ * @param   irq     [IN] 要挂载的中断线
+ * @param   handler [IN] 挂载的函数，发生中断时调用的回调函数，顶半部
+ * @param   flags   [IN] 指定中断的触发方式以及处理方式
+ *                      IRQF_TRIGGER_RISING、IRQF_TRIGGER_FALLING、IRQF_TRIGGER_HIGH、IRQF_TRIGGER_LOW
+ *                      IRQF_SHARED 表示多个设备共享中断，一个设备以IRQF_SHARED申请某中断成功的前提是该中断未被申请，或该中断虽然被申请了，但是之前申请该中断的所有设备也都以IRQF_SHARED标志申请该中断
+ * @param   name    [IN] 中断名称
+ * @param   dev     [IN] 中断时传递给回调函数的参数
+ * @return  0，成功; <0，失败
+ * @note    需要用free_irq卸载
  */
 #include <linux/interrupt.h>
 int request_irq(unsigned int irq, irq_handler_t handler,
     unsigned long flags, const char *name, void *dev);
 
 /*
- * 功能: 卸载request_irq的挂载
- * 返回: 设备名指针，成功; NULL，找不到
+ * @brief   卸载request_irq的挂载
+ * @param   irq     [IN] 要卸载的中断线
+ * @param   dev_id  [IN] 设备标识指针
+ * @return  设备名指针，成功; NULL，找不到
  */
-void *free_irq(unsigned int irq, void *dev_id)
+void *free_irq(unsigned int irq, void *dev_id);
 
 /*
- * 功能: 将回调函数挂载在中断线上
- * IN  : dev_id     中断时传递给回调函数的参数
- * 说明: devm_request_irq 的挂载，设备卸载时会自动卸载
+ * @brief   将回调函数挂载在中断线上(设备资源管理版)
+ * @param   dev     [IN] 设备结构体指针
+ * @param   irq     [IN] 要挂载的中断线
+ * @param   handler [IN] 挂载的函数，发生中断时调用的回调函数，顶半部
+ * @param   irqflags [IN] 指定中断的触发方式以及处理方式
+ * @param   devname [IN] 中断名称
+ * @param   dev_id  [IN] 中断时传递给回调函数的参数
+ * @return  0，成功; <0，失败
+ * @note    devm_request_irq 的挂载，设备卸载时会自动卸载
  */
 int devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler,
     unsigned long irqflags, const char *devname, void *dev_id);
 
-/* 功能: 主动卸载devm_request_irq的挂载 */
+/*
+ * @brief   主动卸载devm_request_irq的挂载
+ * @param   dev     [IN] 设备结构体指针
+ * @param   irq     [IN] 要卸载的中断线
+ * @param   dev_id  [IN] 设备标识指针
+ * @return  无
+ */
 void devm_free_irq(struct device *dev, unsigned int irq, void *dev_id);
 
 /*
- * 功能: 申请线程irq，内核会为相应的中断号分配一个对应的内核线程
- * IN  : thread_fn  不为NULL时创建内核线程运行ISR
+ * @brief   申请线程irq，内核会为相应的中断号分配一个对应的内核线程
+ * @param   irq       [IN] 要挂载的中断线
+ * @param   handler   [IN] 挂载的函数，发生中断时调用的回调函数，顶半部
+ * @param   thread_fn [IN] 不为NULL时创建内核线程运行ISR
+ * @param   irqflags  [IN] 指定中断的触发方式以及处理方式
+ * @param   devname   [IN] 中断名称
+ * @param   dev_id    [IN] 中断时传递给回调函数的参数
+ * @return  0，成功; <0，失败
  */
 int request_threaded_irq(unsigned int irq, irq_handler_t handler,
 			 irq_handler_t thread_fn, unsigned long irqflags,
 			 const char *devname, void *dev_id);
+/*
+ * @brief   申请线程irq(设备资源管理版)
+ * @param   dev       [IN] 设备结构体指针
+ * @param   irq       [IN] 要挂载的中断线
+ * @param   handler   [IN] 挂载的函数，发生中断时调用的回调函数，顶半部
+ * @param   thread_fn [IN] 不为NULL时创建内核线程运行ISR
+ * @param   irqflags  [IN] 指定中断的触发方式以及处理方式
+ * @param   devname   [IN] 中断名称
+ * @param   dev_id    [IN] 中断时传递给回调函数的参数
+ * @return  0，成功; <0，失败
+ * @note    设备卸载时会自动卸载
+ */
 int devm_request_threaded_irq(struct device *dev, unsigned int irq,
 			      irq_handler_t handler, irq_handler_t thread_fn,
 			      unsigned long irqflags, const char *devname,
@@ -2746,22 +2869,32 @@ int devm_request_threaded_irq(struct device *dev, unsigned int irq,
 
 ```c
 /*
- * 功能: 使能/屏蔽中断线
- * 返回: none
- * IN  : irq        操作的中断线
- * 说明: disable_irq会等待指定的中断被处理完，因此如果在n号中断的顶半部调用，会引起系统的死锁
- * disable_irq_nosync立即返回，可在中断的顶半部调用
+ * @brief   使能中断线
+ * @param   irq     [IN] 操作的中断线
+ * @return  无
  */
 #include <linux/interrupt.h>
 void enable_irq(int irq);
+/*
+ * @brief   屏蔽中断线
+ * @param   irq     [IN] 操作的中断线
+ * @return  无
+ * @note    disable_irq会等待指定的中断被处理完，因此如果在n号中断的顶半部调用，会引起系统的死锁
+ */
 void disable_irq(int irq);
+/*
+ * @brief   屏蔽中断线(不同步)
+ * @param   irq     [IN] 操作的中断线
+ * @return  无
+ * @note    disable_irq_nosync立即返回，可在中断的顶半部调用
+ */
 void disable_irq_nosync(int irq);
 ```
 
 ### softirq
 
-* 用softirq_action结构体表征一个软中断，这个结构体包含软中断处理函数指针和传递
-给该函数的参数。使用open_softirq()函数可以注册软中断对应的处理函数，而raise_softirq()函数可以触发一个软中断
+* 用`softirq_action`结构体表征一个软中断，这个结构体包含软中断处理函数指针和传递
+给该函数的参数。使用`open_softirq()`函数可以注册软中断对应的处理函数，而`raise_softirq()`函数可以触发一个软中断
 * 内核中采用softirq的地方包括HI_SOFTIRQ、TIMER_SOFTIRQ、NET_TX_SOFTIRQ、
 NET_RX_SOFTIRQ、SCSI_SOFTIRQ、TASKLET_SOFTIRQ等，一般来说，驱动的编写者不会也不宜直接使用softirq
 * 硬中断、软中断和信号的区别：硬中断是外部设备对CPU的中断，软中断是中断底半部的一种处理机制，而信号则是由内核（或其他进程）对某个进程的中断。
@@ -3070,7 +3203,7 @@ int mod_timer(struct timer_list *timer, unsigned long expires);
 * Linux中，系统调用是用户空间访问内核的唯一手段。
     * 主要作用:1、为用户空间提供了硬件的抽象接口; 2、保证了系统的稳定和安全; 3、每个进程都运行在虚拟系统中。
 * Unix的接口设计格言“提供机制问不是策略”。“需要提供什么功能”是机制，“怎么实现这些功能”是策略。Unix的系统调用抽象出了用于完成某种确定的目的的函数。这些函数怎么用不需要内核关心。
-* 每个系统调用会给出一个系统调用号 <asm/unistd.h> 。系统调用号一旦分配就不能有任何更改，被删除也不允许被回收。
+* 每个系统调用会给出一个系统调用号 `<asm/unistd.h>` 。系统调用号一旦分配就不能有任何更改，被删除也不允许被回收。
 * 通知内核的机制靠软中断实现: 通过引发一个异常(称为同步中断)来促使系统切换到内核态去执行异常处理程序。
 * 系统调用的基本流程是: 陷入内核，传递系统调用号和参数，执行正确的系统调用函数，并且把返回值带回用户空间。
 * 系统调用号通过系统寄存器(eax for x86)传递给内核, 与NR_syscalls比较检查有效性，有效则执行系统调用 call *sys_call_table(, %rax， 8)，x86-32类似，用4代替8。参数也通过寄存器传入内核(ebx ecx edx esi edi按顺序放置前5个参数 for x86)。系统调用给用户空间的返回值也通过寄存器传递(eax for x86)。
@@ -3103,7 +3236,7 @@ int mod_timer(struct timer_list *timer, unsigned long expires);
 | 简称 | 全称 | 说明 |
 | ---- | ---- | ---- |
 | D 不可中断 | uninterruptible sleep       | 收到信号不唤醒和不可运行, 进程必须等待直到有中断发生(usually IO) |
-| R 运行     | runnable(on run queue)      | 正在运行或在运行队列中等待
+| R 运行     | runnable(on run queue)      | 正在运行或在运行队列中等待 |
 | S 中断     | sleeping                    | 休眠中, 受阻, 在等待某个条件的形成或接受到信号 |
 | T 停止     | traced or stopped           | 进程收到SIGSTOP, SIGSTP, SIGTIN, SIGTOU信号后停止运行运行 |
 | Z 僵死     | adefunct('zombie') process  | 进程已终止, 但进程描述符存在, 直到父进程调用wait4()系统调用后释放 |
