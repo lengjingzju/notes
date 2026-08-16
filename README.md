@@ -34,10 +34,10 @@ $ cd src && ./md_auto_gen.sh
 
 ### 编程笔记
 
-- [C/C++ 编程完全指南](./src/md/programming_c_cxx.md)
+- [C/C++编程完全指南](./src/md/programming_c_cxx.md)
 - [Linux应用编程笔记](./src/md/programming_app.md)
 - [Linux驱动编程笔记](./src/md/programming_driver.md)
-- [Python编程笔记](./src/md/programming_python.md)
+- [Python编程完全指南](./src/md/programming_python.md)
 - [Shell编程笔记](./src/md/programming_shell.md)
 - [Makefile编程笔记](./src/md/programming_makefile.md)
 - [Kconfig编程笔记](./src/md/programming_kconfig.md)

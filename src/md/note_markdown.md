@@ -88,7 +88,7 @@
     * 要用斜体显示文本，请在单词或短语的前后各添加1个星号 `*`
     * 要加粗显示文本，请在单词或短语的前后各添加2个星号 `**`
     * 要同时用粗体和斜体突出显示文本，请在单词或短语的前后各添加3个星号 `***`
-    * 注：也可以使用下划线 `-` 代替星号 `*`，但不建议使用，因为不同渲染器有不同处理
+    * 注：也可以使用下划线 `_` 代替星号 `*`，但不建议使用，因为不同渲染器有不同处理
 * 删除线(扩展语法)
     * 要在文本上显示删除线，请在单词或短语的前后各添加2个波浪号 `~~`
 * 高亮(扩展语法)(mdbook不支持)
@@ -112,7 +112,7 @@
 
 * 引用
     * 引用使用大于号 `>` 开头
-    * 块引用可以包含多个段落，段落之间的空白行需要添加一个 `>` 符号
+    * 块引用可以包含多个段落，段落之间的空白行也需要添加一个 `>` 符号
         * 如果是同一个段落，嵌套元素的效果会延续
     * 块引用可以嵌套，在要嵌套的段落前添加 `>>` 符号
     * 块引用可以嵌套其他的元素，但并非所有元素都可以使用
@@ -505,7 +505,7 @@ Markdown也可以使用 [HTML表格](https://www.runoob.com/html/html-tables.htm
 **语法**
 
 ```html
-<table>
+<table border="1">
 <thead>
 <tr>
   <th>列标题1</th>
@@ -535,7 +535,7 @@ Markdown也可以使用 [HTML表格](https://www.runoob.com/html/html-tables.htm
 <tr>
   <td>行5，列1</td>
   <td>行5，列2</td>
-  <td><ul><li>A</li><li>B</li><li>C</li></ul>
+  <td><ul><li>A</li><li>B</li><li>C</li></ul></td>
 </tr>
 </tbody>
 </table>
@@ -543,7 +543,7 @@ Markdown也可以使用 [HTML表格](https://www.runoob.com/html/html-tables.htm
 
 **效果**
 
-<table>
+<table border="1">
 <thead>
 <tr>
   <th>列标题1</th>
@@ -970,9 +970,9 @@ graph LR
 
     ```mermaid
     graph
-        a --> b & c--> d
+        a --> b & c --> d
 
-        A & B--> C & D
+        A & B --> C & D
 
         X --> M
         X --> N
@@ -984,9 +984,9 @@ graph LR
 
 ```mermaid
 graph
-    a --> b & c--> d
+    a --> b & c --> d
 
-    A & B--> C & D
+    A & B --> C & D
 
     X --> M
     X --> N
@@ -1381,17 +1381,19 @@ pie title 宠物的选择
     | `..\|>` `<\|..` | 实现关系 |
     | `..`            | 虚线连接 |
 
-    ```mermaid
-    classDiagram
-        classA --|> classB : 继承
-        classC --* classD : 组成
-        classE --o classF : 集合
-        classG --> classH : 关联
-        classI -- classJ : 实线连接
-        classK ..> classL : 依赖
-        classM ..|> classN : 实现
-        classO .. classP : 虚线连接
-    ```
+**效果**
+
+```mermaid
+classDiagram
+    classA --|> classB : 继承
+    classC --* classD : 组成
+    classE --o classF : 集合
+    classG --> classH : 关联
+    classI -- classJ : 实线连接
+    classK ..> classL : 依赖
+    classM ..|> classN : 实现
+    classO .. classP : 虚线连接
+```
 
 ---
 
@@ -1577,7 +1579,7 @@ classDiagram
 | $ \coprod $ | `$ \coprod $` | N元余积 |
 | $ \int $ | `$ \int $` | 积分 |
 | $ \int_{-N}^{N} e^x\, dx $ | `$ \int_{-N}^{N} e^x\, dx` |  |
-| $ \int_{-\infty}^{\infty} e^{x} dx $ | `\int_{-\infty}^{\infty} e^{x} dx $` |  |
+| $ \int_{-\infty}^{\infty} e^{x} dx $ | `$ \int_{-\infty}^{\infty} e^{x} dx $` |  |
 | $ \iint $ | `$ \iint $` | 双重积分 |
 | $ \iiint $ | `$ \iiint $` | 三重积分 |
 | $ \oint $ | `$ \oint $` | 曲线积分 |
@@ -1687,7 +1689,7 @@ classDiagram
 | $ \leftarrow $ $ \gets $ $ \Leftarrow $ | `$ \leftarrow $` `$ \gets $` `$ \Leftarrow $` |  |
 | $ \longleftarrow $ $ \Longleftarrow $ | `$ \longleftarrow $` `$ \Longleftarrow $` |  |
 | $ \rightarrow $ $ \to $ $ \Rightarrow $ | `$ \rightarrow $` `$ \to $` `$ \Rightarrow $` |  |
-| $ \longrightarrow $ $ \Longrightarrow $ | `$ long\rightarrow $` `$ \Longrightarrow $` |  |
+| $ \longrightarrow $ $ \Longrightarrow $ | `$ \longrightarrow $` `$ \Longrightarrow $` |  |
 | $ \leftrightarrow $ $ \Leftrightarrow $ | `$ \leftrightarrow $` `$ \Leftrightarrow $` |  |
 | $ \longleftrightarrow $ $ \Longleftrightarrow $ $ \iff $ | `$ \longleftrightarrow $` `$ \Longleftrightarrow $` `$ \iff $` |  |
 | $ \updownarrow $ $ \Updownarrow $ | `$ \updownarrow $` `$ \Updownarrow $` |  |
@@ -1843,7 +1845,7 @@ A plain info.
 
 - [A段落1](类别A/段落1.md)
 
-# 列别B
+# 类别B
 
 - [B段落1](类别B/段落1.md)
   - [B1子段落1](类别B/段落1/段落1.md)
