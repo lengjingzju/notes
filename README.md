@@ -60,7 +60,8 @@ $ cd src && ./md_auto_gen.sh
 ### 源码学习
 
 - [Linux IPC示例代码](./code/linux_ipc)
-- [FFmpeg批量压制脚本](./code/video_convert/video_convert.sh)
+- [FFmpeg批量压制脚本-Linux](./code/video_convert/video_convert.sh)
+- [FFmpeg批量压制脚本-Windows](./code/video_convert/video_convert.ps1)
 
 ## 版权声明
 

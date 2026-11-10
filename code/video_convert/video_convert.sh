@@ -1,4 +1,10 @@
 #!/bin/bash
+#==============================================================================
+# 脚本功能：批量视频转码
+# 用法：
+#   ./encode.sh <输入目录> <输出目录>    # 处理目录下所有视频文件
+#   ./encode.sh <配置文件> <输出目录>    # 按配置文件逐行处理
+#==============================================================================
 
 #==============================================================================
 # 编码配置选项（用户可根据需求修改以下变量）
@@ -31,6 +37,9 @@ fps_limit=30        # 帧率上限（单位：fps）
                     # 当视频原始帧率高于此值时，自动降低到该值
                     # 设置为空字符串 "" 则保留原始帧率
 
+# GOP倍率设置
+gop_multiplier=2    # GOP设置为FPS的几倍，默认约2秒的帧数，范围[24,600]
+
 # CRF / CQP 质量值
 CRF_VALUE="23"      # - 软件编码（libx264/libx265）：0-51，值越小质量越高，23为默认
                     # - 硬件编码（NVENC）：-cq 参数范围可能不同，但此处通用值23通常有效
@@ -38,13 +47,6 @@ CRF_VALUE="23"      # - 软件编码（libx264/libx265）：0-51，值越小质�
 # 音频编码器及码率（统一使用AAC 64kbps，兼容性好）
 AUDIO_CODEC="aac"
 AUDIO_BITRATE="64k"
-
-#==============================================================================
-# 脚本功能：批量视频转码
-# 用法：
-#   ./encode.sh <输入目录> <输出目录>    # 处理目录下所有视频文件
-#   ./encode.sh <配置文件> <输出目录>    # 按配置文件逐行处理
-#==============================================================================
 
 # 设定严格错误处理：遇到未捕获的错误时立即退出
 # （但会在单文件处理循环内临时关闭，以允许继续处理后续文件）
@@ -138,6 +140,7 @@ get_container_format() {
 #==============================================================================
 get_video_info() {
     local input_file="$1"
+    # 逐行接收并按换行拼接，避免 Out-String 按控制台宽度折行破坏长 JSON 行
     local info_json=$(ffprobe -v quiet -print_format json -show_format -show_streams "$input_file")
 
     # 找到第一个视频流
@@ -205,7 +208,7 @@ get_video_fps() {
 # 参数：$1 - 宽度，$2 - 高度
 # 返回：推荐的视频码率（kbps），已四舍五入到100的倍数
 # 算法：基于720p (1280×720) 使用1300kbps的H.264基准，像素数线性缩放
-#       HEVC码率 = H.264码率 × 0.8
+#       HEVC码率 = H.264码率 × 0.8，最后四舍五入到100的倍数
 #==============================================================================
 calculate_bitrate() {
     local width=$1
@@ -238,15 +241,15 @@ calculate_bitrate() {
 #==============================================================================
 # 计算关键帧间隔（GOP大小）
 # 参数：$1 - 输出帧率
-# 返回：GOP帧数（约2秒的帧数，范围[24,250]）
+# 返回：GOP帧数
 #==============================================================================
 calculate_gop_size() {
     local fps=$1
-    local gop_size=$((fps * 2))
+    local gop_size=$((fps * gop_multiplier))
     if [ $gop_size -lt 24 ]; then
         gop_size=24
-    elif [ $gop_size -gt 250 ]; then
-        gop_size=250
+    elif [ $gop_size -gt 600 ]; then
+        gop_size=600
     fi
     echo "$gop_size"
 }
@@ -312,6 +315,10 @@ copy_or_cut_video() {
 
     echo -e "${BLUE}跳过编码，直接复制/剪切...${NC}"
 
+    # 使用进程PID作为临时文件唯一后缀，防止并行处理时冲突
+    local UNIQUE_ID="$$"
+    local DEBUGLOG_PREFIX="/tmp/ffmpeg_output_${UNIQUE_ID}"
+
     # 构建命令：先指定开始时间（快速seek），再指定输入文件
     local ffmpeg_cmd="ffmpeg"
     if [ -n "$start_time" ] && [ "$start_time" != "0" ]; then
@@ -325,13 +332,17 @@ copy_or_cut_video() {
     # 流复制：仅复制第一个视频流和所有音频流（使用?避免无对应流时报错）
     ffmpeg_cmd="$ffmpeg_cmd -c:v copy -c:a copy -map 0:v:0? -map 0:a? -movflags +faststart -y \"$output_file\""
 
-    echo -e "执行: $ffmpeg_cmd"
-    if eval $ffmpeg_cmd 2>&1 | tee /tmp/ffmpeg_output.log | grep -E "frame|fps|size|time|bitrate|speed"; then
-        echo -e "${GREEN}复制/剪切完成${NC}"
+    echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') 开始复制/剪切...${NC}"
+    echo -e "${BLUE}执行：$ffmpeg_cmd${NC}"
+    if eval $ffmpeg_cmd 2>&1 | tee ${DEBUGLOG_PREFIX}.log; then
+        echo -e "\n${GREEN}$(date '+%Y-%m-%d %H:%M:%S') 复制/剪切完成${NC}"
+        rm -f ${DEBUGLOG_PREFIX}.log
         return 0
     else
-        local error_msg=$(grep -i "error\|failed\|invalid" /tmp/ffmpeg_output.log | head -1)
-        echo -e "${RED}复制/剪切失败: ${error_msg:-未知错误}${NC}"
+        local exit_code=$?
+        local error_msg=$(grep -iE "error|failed|invalid" ${DEBUGLOG_PREFIX}.log | tail -1)
+        echo -e "\n${RED}复制/剪切失败 (exit=$exit_code): ${error_msg:-未知错误}${NC}"
+        rm -f ${DEBUGLOG_PREFIX}.log
         return 1
     fi
 }
@@ -355,6 +366,10 @@ encode_crf() {
 
     echo -e "编码参数: 质量值=$CRF_VALUE, 最大码率=${target_bitrate}k, GOP=${gop_size}帧 (FPS: ${fps})"
 
+    # 使用进程PID作为临时文件唯一后缀，防止并行处理时冲突
+    local UNIQUE_ID="$$"
+    local DEBUGLOG_PREFIX="/tmp/ffmpeg_output_${UNIQUE_ID}"
+
     # 根据软/硬编码添加不同的质量参数
     if [ $enc_cuda -eq 1 ]; then
         # NVENC使用 -cq 控制质量
@@ -375,12 +390,17 @@ encode_crf() {
     fi
 
     # 执行编码并显示进度
-    if eval $ffmpeg_cmd 2>&1 | tee /tmp/ffmpeg_output.log | grep -E "frame|fps|size|time|bitrate|speed"; then
-        echo -e "${GREEN}$(date '+%Y-%m-%d %H:%M:%S') 编码成功${NC}"
+    echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') 开始单次编码...${NC}"
+    echo -e "${BLUE}执行：$ffmpeg_cmd${NC}"
+    if eval $ffmpeg_cmd 2>&1 | tee ${DEBUGLOG_PREFIX}.log; then
+        echo -e "\n${GREEN}$(date '+%Y-%m-%d %H:%M:%S') 编码完成${NC}"
+        rm -f ${DEBUGLOG_PREFIX}.log
         return 0
     else
-        local error_msg=$(grep -i "error\|failed\|invalid" /tmp/ffmpeg_output.log | head -1)
-        echo -e "${RED}编码失败: ${error_msg:-未知错误}${NC}"
+        local exit_code=$?
+        local error_msg=$(grep -iE "error|failed|invalid" ${DEBUGLOG_PREFIX}.log | tail -1)
+        echo -e "\n${RED}编码失败 (exit=$exit_code): ${error_msg:-未知错误}${NC}"
+        rm -f ${DEBUGLOG_PREFIX}.log
         return 1
     fi
 }
@@ -427,9 +447,13 @@ encode_2pass() {
 
     # 执行第一遍
     echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') 开始第一次编码...${NC}"
-    if ! eval $pass1_cmd 2>&1 | tee "${DEBUGLOG_PREFIX}-1.log" | grep -E "frame|fps|size|time|bitrate|speed"; then
+    echo -e "${BLUE}执行：$pass1_cmd${NC}"
+    if eval $pass1_cmd 2>&1 | tee "${DEBUGLOG_PREFIX}-1.log"; then
+        echo -e "\n${GREEN}$(date '+%Y-%m-%d %H:%M:%S') 第一次编码完成${NC}"
+    else
+        local exit_code=$?
         local error_msg=$(grep -i "error\|failed\|invalid" "${DEBUGLOG_PREFIX}-1.log" | head -1)
-        echo -e "${RED}第一次编码失败: ${error_msg:-未知错误}${NC}"
+        echo -e "\n${RED}第一次编码失败 (exit=$exit_code): ${error_msg:-未知错误}${NC}"
         # 清理可能遗留的临时文件
         rm -f ${PASSLOG_PREFIX}-*.log ${PASSLOG_PREFIX}-*.log.mbtree ${DEBUGLOG_PREFIX}-*.log 2>/dev/null
         return 1
@@ -437,13 +461,15 @@ encode_2pass() {
 
     # 执行第二遍
     echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') 开始第二次编码...${NC}"
-    if eval $pass2_cmd 2>&1 | tee "${DEBUGLOG_PREFIX}-2.log" | grep -E "frame|fps|size|time|bitrate|speed"; then
-        echo -e "${GREEN}$(date '+%Y-%m-%d %H:%M:%S') 编码成功${NC}"
+    echo -e "${BLUE}执行：$pass2_cmd${NC}"
+    if eval $pass2_cmd 2>&1 | tee "${DEBUGLOG_PREFIX}-2.log"; then
+        echo -e "\n${GREEN}$(date '+%Y-%m-%d %H:%M:%S') 编码成功${NC}"
         rm -f ${PASSLOG_PREFIX}-*.log ${PASSLOG_PREFIX}-*.log.mbtree ${DEBUGLOG_PREFIX}-*.log 2>/dev/null
         return 0
     else
+        local exit_code=$?
         local error_msg=$(grep -i "error\|failed\|invalid" "${DEBUGLOG_PREFIX}-2.log" | head -1)
-        echo -e "${RED}第二次编码失败: ${error_msg:-未知错误}${NC}"
+        echo -e "\n${RED}第二次编码失败 (exit=$exit_code): ${error_msg:-未知错误}${NC}"
         rm -f ${PASSLOG_PREFIX}-*.log ${PASSLOG_PREFIX}-*.log.mbtree ${DEBUGLOG_PREFIX}-*.log 2>/dev/null
         return 1
     fi
@@ -708,10 +734,10 @@ encode_video() {
     # 优化：-ss 放在 -i 之前以实现快速 seek（注意：若时间范围精确要求，-ss 在 -i 之后更精确）
     # 这里使用快速 seek 方式，适用于绝大多数场景
     local ffmpeg_cmd="ffmpeg"
+    ffmpeg_cmd="$ffmpeg_cmd -i \"$input_file\""
     if [ -n "$start_time" ] && [ "$start_time" != "0" ]; then
         ffmpeg_cmd="$ffmpeg_cmd -ss $start_time"
     fi
-    ffmpeg_cmd="$ffmpeg_cmd -i \"$input_file\""
     if [ -n "$end_time" ]; then
         ffmpeg_cmd="$ffmpeg_cmd -to $end_time"
     fi
@@ -839,7 +865,7 @@ main() {
 
     #---------------------------------------------------------------------
     # 构建待处理文件列表
-    # - 若输入是目录：搜索所有支持的视频文件
+    # - 若输入是目录：递归搜索所有支持的视频文件
     # - 若输入是文件：视为配置文件，逐行解析
     #---------------------------------------------------------------------
     local file_list=()
